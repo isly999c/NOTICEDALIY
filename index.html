@@ -3,212 +3,315 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>閃記日誌 FlashLog</title>
+    <title>閃記日誌 FlashLog (雲端版)</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e293b">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="FlashLog">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        // ⚠️ 請在這裡貼上你從 Firebase 拿到的 firebaseConfig
+        // ==========================================
+        const firebaseConfig = {
+           // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyDG3Xo-99WGRbXKRH1h6O0WKRu0679ZCb8",
+  authDomain: "flashlog-ebedd.firebaseapp.com",
+  projectId: "flashlog-ebedd",
+  storageBucket: "flashlog-ebedd.firebasestorage.app",
+  messagingSenderId: "340618263320",
+  appId: "1:340618263320:web:8623be81748d7e49703c6d",
+  measurementId: "G-DLKB0PCB45"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+        };
+        
+        let db = null;
+        // 嘗試初始化 Firebase，如果沒填 config 則回退到 LocalStorage
+        try {
+            if(firebaseConfig.apiKey) {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                console.log("Firebase 雲端連線成功！");
+            } else {
+                console.warn("未設定 Firebase Config，改用本機儲存 (LocalStorage)");
+            }
+        } catch(e) {
+            console.error("Firebase 初始化失敗:", e);
+        }
+
+        window.db = db;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.getDocs = getDocs;
+        window.query = query;
+        window.orderBy = orderBy;
+    </script>
     <style>
-        :root { --primary: #3b82f6; --bg: #f8fafc; --card: #ffffff; --text: #334155; --danger: #ef4444; --success: #22c55e; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { background-color: var(--bg); color: var(--text); padding-top: env(safe-area-inset-top); }
-        
-        /* --- 導覽列 --- */
-        .nav { display: flex; background: #1e293b; padding: 15px; color: white; justify-content: center; gap: 20px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .nav-item { padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
-        .nav-item.active { background: var(--primary); }
-        
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; padding-bottom: 80px; }
-        .card { background: var(--card); padding: 20px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        
-        h2 { font-size: 18px; margin-bottom: 15px; color: #0f172a; display: flex; justify-content: space-between; align-items: center; }
-        .badge { font-size: 12px; font-weight: normal; background: #e2e8f0; padding: 4px 8px; border-radius: 12px; color: #64748b; }
-        .badge.saved { background: #dcfce7; color: #166534; }
-        
-        label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #475569; }
-        input[type="password"], textarea { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 16px; background: #f1f5f9; outline: none; transition: border 0.3s; }
-        input[type="password"]:focus, textarea:focus { border-color: var(--primary); background: white; }
-        textarea { height: 180px; resize: none; line-height: 1.5; }
-        
-        .tools { display: flex; justify-content: space-between; font-size: 13px; color: #64748b; margin-top: 8px; }
-        
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.2s; margin-top: 10px; }
-        .btn:active { opacity: 0.8; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-mic { background: #cbd5e1; color: #1e293b; }
-        .btn-mic.recording { background: var(--danger); color: white; animation: pulse 1.5s infinite; }
-        
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-        
-        #loading { display: none; text-align: center; margin: 20px 0; color: var(--primary); font-weight: bold; }
-        .result-box { margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 12px; border-left: 4px solid var(--primary); white-space: pre-wrap; font-size: 15px; line-height: 1.6; display: none; }
-        
-        /* --- 歷史紀錄區塊 --- */
-        .history-item { border-bottom: 1px solid #e2e8f0; padding: 15px 0; }
-        .history-item:last-child { border-bottom: none; }
-        .history-date { font-weight: bold; color: #0f172a; margin-bottom: 8px; font-size: 14px; }
-        .history-content { font-size: 14px; color: #475569; white-space: pre-wrap; background: #f1f5f9; padding: 10px; border-radius: 8px; }
-        
-        /* 切換頁面 */
+        body { padding-top: env(safe-area-inset-top); background-color: #f8fafc; }
         .page { display: none; }
         .page.active { display: block; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .recording { background-color: #ef4444 !important; color: white !important; animation: pulse 1.5s infinite; }
     </style>
 </head>
-<body>
+<body class="text-slate-700">
 
-<div class="nav">
-    <div class="nav-item active" onclick="switchPage('write')">📝 寫日誌</div>
-    <div class="nav-item" onclick="switchPage('history')">📂 歷史紀錄</div>
-</div>
+    <!-- 導覽列 -->
+    <nav class="flex justify-center gap-4 bg-slate-900 p-4 text-white sticky top-0 z-50 shadow-md">
+        <button id="nav-write" class="px-4 py-2 rounded-full font-bold bg-blue-500 transition-colors" onclick="switchPage('write')">📝 寫日誌</button>
+        <button id="nav-history" class="px-4 py-2 rounded-full font-bold hover:bg-slate-700 transition-colors" onclick="switchPage('history')">☁️ 雲端紀錄</button>
+    </nav>
 
-<div class="container">
-    <div id="page-write" class="page active">
-        <div class="card" style="padding-bottom: 10px;">
-            <label for="apiKey">Gemini API 金鑰</label>
-            <input type="password" id="apiKey" placeholder="輸入 API Key...">
-        </div>
-
-        <div class="card">
-            <h2>今日工作碎記 <span id="saveStatus" class="badge">已同步儲存</span></h2>
-            <textarea id="logInput" placeholder="點擊下方麥克風，或直接輸入。"></textarea>
-            <div class="tools">
-                <span id="charCount">字數: 0</span>
-                <span onclick="clearDraft()" style="cursor:pointer; color: var(--danger);">清空草稿</span>
+    <div class="max-w-2xl mx-auto p-4 pb-20">
+        
+        <!-- ================= 寫入頁面 ================= -->
+        <div id="page-write" class="page active">
+            
+            <div class="bg-white p-5 rounded-2xl shadow-sm mb-5">
+                <label class="block text-sm font-semibold mb-2 text-slate-600">Gemini API 金鑰</label>
+                <input type="password" id="apiKey" placeholder="輸入 API Key..." class="w-full p-3 border border-slate-300 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-500 transition-colors">
             </div>
-            
-            <button id="micBtn" class="btn btn-mic">🎤 語音輸入</button>
-            <button id="submitBtn" class="btn btn-primary">✨ AI 生成並存入歷史紀錄</button>
-            
-            <div id="loading">🧠 AI 正在統整分析中，請稍候...</div>
-            <div id="result" class="result-box"></div>
+
+            <div class="bg-white p-5 rounded-2xl shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-slate-900">今日工作碎記</h2>
+                    <span id="saveStatus" class="text-xs px-2 py-1 bg-slate-100 text-slate-500 rounded-lg">自動儲存草稿</span>
+                </div>
+                
+                <textarea id="logInput" placeholder="在此輸入或使用語音..." class="w-full h-48 p-3 border border-slate-300 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-500 resize-none"></textarea>
+                
+                <div class="flex justify-between text-xs text-slate-500 mt-2 mb-4">
+                    <span id="charCount">字數: 0</span>
+                    <button onclick="clearDraft()" class="text-red-500 hover:text-red-700">清空草稿</button>
+                </div>
+                
+                <button id="micBtn" class="w-full p-4 mb-3 rounded-xl font-bold bg-slate-200 text-slate-800 transition-all flex justify-center items-center gap-2">
+                    🎤 語音輸入 (自動加時間)
+                </button>
+                
+                <button id="submitBtn" class="w-full p-4 rounded-xl font-bold bg-blue-500 text-white hover:bg-blue-600 transition-colors flex justify-center items-center gap-2">
+                    ✨ AI 分類統整並上傳雲端
+                </button>
+                
+                <div id="loading" class="hidden text-center mt-5 text-blue-500 font-bold">🧠 AI 正在分析與分類中，請稍候...</div>
+                <div id="result" class="hidden mt-5 p-4 bg-slate-50 rounded-xl border-l-4 border-blue-500 whitespace-pre-wrap text-sm leading-relaxed"></div>
+            </div>
         </div>
+
+        <!-- ================= 歷史紀錄頁面 ================= -->
+        <div id="page-history" class="page">
+            <div class="bg-white p-5 rounded-2xl shadow-sm">
+                <h2 class="text-lg font-bold text-slate-900 mb-2">雲端歷史工作日報</h2>
+                <p class="text-xs text-slate-500 mb-5">資料已同步至 Google Firebase 雲端。</p>
+                
+                <button onclick="exportData()" class="w-full mb-6 p-3 rounded-xl font-bold border border-blue-500 text-blue-500 hover:bg-blue-50 transition-colors">
+                    📥 下載實體備份 (JSON)
+                </button>
+                
+                <div id="historyContainer" class="space-y-4">
+                    <!-- 歷史紀錄將由 JS 生成 -->
+                </div>
+            </div>
+        </div>
+
     </div>
 
-    <div id="page-history" class="page">
-        <div class="card">
-            <h2>歷史工作日報</h2>
-            <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">資料安全儲存於手機內部空間。</p>
-            <button onclick="exportData()" class="btn btn-primary" style="margin-bottom: 20px;">📥 下載備份 (防遺失必備)</button>
-            <div id="historyContainer"></div>
-        </div>
-    </div>
-</div>
+    <script type="module">
+        // 等待 Firebase 初始化完成
+        setTimeout(() => {
+            const db = window.db;
+            
+            // --- 狀態還原 ---
+            if (localStorage.getItem('flashlog_api_key')) document.getElementById('apiKey').value = localStorage.getItem('flashlog_api_key');
+            if (localStorage.getItem('flashlog_draft')) document.getElementById('logInput').value = localStorage.getItem('flashlog_draft');
+            updateCharCount();
 
-<script>
-    // --- 核心變數 ---
-    const apiKeyInput = document.getElementById('apiKey');
-    const logInput = document.getElementById('logInput');
-    const micBtn = document.getElementById('micBtn');
-    const submitBtn = document.getElementById('submitBtn');
-    const saveStatus = document.getElementById('saveStatus');
-    const charCount = document.getElementById('charCount');
-    const resultDiv = document.getElementById('result');
-    const historyContainer = document.getElementById('historyContainer');
-
-    // --- 初始化復原 ---
-    window.onload = () => {
-        if (localStorage.getItem('flashlog_api_key')) apiKeyInput.value = localStorage.getItem('flashlog_api_key');
-        if (localStorage.getItem('flashlog_draft')) { logInput.value = localStorage.getItem('flashlog_draft'); updateCharCount(); }
-        renderHistory();
-    };
-
-    // --- 自動儲存 ---
-    let saveTimeout;
-    logInput.addEventListener('input', () => {
-        updateCharCount(); saveStatus.innerText = '儲存中...'; saveStatus.classList.remove('saved');
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => {
-            localStorage.setItem('flashlog_draft', logInput.value);
-            saveStatus.innerText = '已自動儲存'; saveStatus.classList.add('saved');
-        }, 500);
-    });
-
-    apiKeyInput.addEventListener('input', () => localStorage.setItem('flashlog_api_key', apiKeyInput.value));
-    function updateCharCount() { charCount.innerText = `字數: ${logInput.value.length}`; }
-    function clearDraft() { if(confirm('確定清空？')) { logInput.value = ''; localStorage.setItem('flashlog_draft', ''); updateCharCount(); resultDiv.style.display = 'none'; } }
-
-    // --- 切換頁面 ---
-    function switchPage(pageName) {
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-        document.getElementById(`page-${pageName}`).classList.add('active');
-        event.currentTarget.classList.add('active');
-        if(pageName === 'history') renderHistory();
-    }
-
-    // --- 語音辨識 ---
-    if ('webkitSpeechRecognition' in window || 'speechRecognition' in window) {
-        const recognition = new (window.webkitSpeechRecognition || window.speechRecognition)();
-        recognition.lang = 'zh-TW';
-        recognition.onstart = () => { micBtn.classList.add('recording'); micBtn.innerText = '🛑 聆聽中...'; };
-        recognition.onend = () => { micBtn.classList.remove('recording'); micBtn.innerText = '🎤 語音輸入'; };
-        recognition.onresult = (event) => {
-            const timeStr = `[${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}]`;
-            logInput.value += (logInput.value ? `\n` : '') + `${timeStr} ${event.results[0][0].transcript}`;
-            logInput.dispatchEvent(new Event('input'));
-        };
-        micBtn.addEventListener('click', () => micBtn.classList.contains('recording') ? recognition.stop() : recognition.start());
-    } else { micBtn.style.display = 'none'; }
-
-    // --- AI 生成與儲存 ---
-    submitBtn.addEventListener('click', async () => {
-        const apiKey = apiKeyInput.value.trim(), textData = logInput.value.trim();
-        if (!apiKey) return alert('請輸入 API Key！'); if (!textData) return alert('請輸入內容！');
-
-        document.getElementById('loading').style.display = 'block'; resultDiv.style.display = 'none'; submitBtn.disabled = true;
-
-        try {
-            // 注意！這裡已經幫你更新成最新的 gemini-2.5-flash 了！
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ role: "user", parts: [{ text: `你是一位自動化工程助理。請將以下紀錄轉為Markdown格式的專業日報，包含：\n📅 本日摘要\n📌 重點工作項目\n💡 技術分析\n🔜 待辦事項\n\n【紀錄】：\n${textData}` }] }],
-                    generationConfig: { temperature: 0.2 }
-                })
+            // --- UI 互動 ---
+            document.getElementById('apiKey').addEventListener('input', (e) => localStorage.setItem('flashlog_api_key', e.target.value));
+            
+            let saveTimeout;
+            document.getElementById('logInput').addEventListener('input', (e) => {
+                updateCharCount();
+                const status = document.getElementById('saveStatus');
+                status.innerText = '儲存中...'; status.className = 'text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded-lg';
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    localStorage.setItem('flashlog_draft', e.target.value);
+                    status.innerText = '已儲存草稿'; status.className = 'text-xs px-2 py-1 bg-green-100 text-green-700 rounded-lg';
+                }, 500);
             });
+
+            // --- 語音辨識 ---
+            const micBtn = document.getElementById('micBtn');
+            if ('webkitSpeechRecognition' in window || 'speechRecognition' in window) {
+                const recognition = new (window.webkitSpeechRecognition || window.speechRecognition)();
+                recognition.lang = 'zh-TW';
+                recognition.onstart = () => { micBtn.classList.add('recording'); micBtn.innerText = '🛑 聆聽中... (點擊結束)'; };
+                recognition.onend = () => { micBtn.classList.remove('recording'); micBtn.innerText = '🎤 語音輸入 (自動加時間)'; };
+                recognition.onresult = (e) => {
+                    const timeStr = `[${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}]`;
+                    const input = document.getElementById('logInput');
+                    input.value += (input.value ? '\n' : '') + `${timeStr} ${e.results[0][0].transcript}`;
+                    input.dispatchEvent(new Event('input'));
+                };
+                micBtn.addEventListener('click', () => micBtn.classList.contains('recording') ? recognition.stop() : recognition.start());
+            } else { micBtn.style.display = 'none'; }
+
+            // --- AI 處理 ---
+            document.getElementById('submitBtn').addEventListener('click', async () => {
+                const apiKey = document.getElementById('apiKey').value.trim();
+                const textData = document.getElementById('logInput').value.trim();
+                if (!apiKey) return alert('請輸入 API Key！'); if (!textData) return alert('請輸入內容！');
+
+                document.getElementById('loading').classList.remove('hidden');
+                document.getElementById('result').classList.add('hidden');
+                document.getElementById('submitBtn').disabled = true;
+
+                // 🌟 最新的精準分類 Prompt 🌟
+                const systemPrompt = `你是一位專業的自動化與機電工程領域職場助理。請將以下使用者提供的當日隨手紀錄，精準統整、修正為專業術語，並嚴格依據以下結構進行分類輸出。
+
+                請嚴格以下列 Markdown 格式輸出：
+
+                🏢 **公司名稱/服務單位**
+                - [請從紀錄中辨識相關的公司名稱；若文字未提及，則依據脈絡歸類，或顯示「內部技術單位」]
+
+                📂 **工作內容分類**
+                * **🛠️ 設備檢修與異常排查**：(若內容涉及維修項目，請詳細條列)
+                * **🎓 技術教育訓練**：(若內容涉及教育訓練、新人培訓，請條列)
+                * **📋 最終驗收與 Final Check**：(若內容涉及出機檢驗，請條列)
+
+                ⚠️ **問題與異常清單**
+                - 詳細列出今日遇到的具體錯誤(如零速檢知錯誤)、報警訊號及排查進度。
+
+                🔜 **待辦與接續事項**
+                - 後續需追蹤的項目或明日計畫。`;
+
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n【今日紀錄】：\n${textData}` }] }],
+                            generationConfig: { temperature: 0.2 }
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.error) throw new Error(data.error.message);
+                    
+                    let report = data.candidates[0].content.parts[0].text;
+                    document.getElementById('result').innerHTML = report.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>');
+                    document.getElementById('result').classList.remove('hidden');
+
+                    // 存入 Firebase 或 LocalStorage
+                    await saveToCloud(report, textData);
+                    
+                    setTimeout(() => { if(confirm('✅ 雲端上傳成功！是否清空草稿？')) { document.getElementById('logInput').value=''; localStorage.setItem('flashlog_draft',''); updateCharCount(); } }, 500);
+                } catch (err) { alert('錯誤: ' + err.message); } 
+                finally { document.getElementById('loading').classList.add('hidden'); document.getElementById('submitBtn').disabled = false; }
+            });
+
+        }, 1000); // 確保模組載入完成
+
+        // --- 資料儲存 (優先存 Firebase，失敗存 LocalStorage) ---
+        async function saveToCloud(reportHtml, rawText) {
+            const dateStr = new Date().toISOString(); // ISO 格式方便排序
+            const displayDate = new Date().toLocaleString('zh-TW', { hour12: false });
             
-            const data = await response.json();
-            if (data.error) throw new Error(data.error.message);
+            const record = { date: dateStr, displayDate: displayDate, raw: rawText, report: reportHtml };
+
+            if (window.db) {
+                try {
+                    await window.addDoc(window.collection(window.db, "flashlogs"), record);
+                    console.log("已存入 Firestore");
+                    return;
+                } catch (e) {
+                    console.error("Firestore 寫入失敗，改存本地:", e);
+                }
+            }
             
-            let report = data.candidates[0].content.parts[0].text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-            resultDiv.innerHTML = report; resultDiv.style.display = 'block';
+            // 本地備用儲存
+            let history = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
+            history.unshift(record);
+            localStorage.setItem('flashlog_history', JSON.stringify(history));
+        }
 
-            saveToHistory(report, textData);
-            setTimeout(() => { if(confirm('✅ 已存入歷史紀錄。是否清空草稿？')) { clearDraft(); } }, 500);
-        } catch (error) { alert('錯誤: ' + error.message); } finally { document.getElementById('loading').style.display = 'none'; submitBtn.disabled = false; }
-    });
+        // --- 渲染歷史紀錄 ---
+        window.switchPage = async function(pageName) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`page-${pageName}`).classList.add('active');
+            
+            document.getElementById('nav-write').className = `px-4 py-2 rounded-full font-bold transition-colors ${pageName==='write'?'bg-blue-500':'hover:bg-slate-700'}`;
+            document.getElementById('nav-history').className = `px-4 py-2 rounded-full font-bold transition-colors ${pageName==='history'?'bg-blue-500':'hover:bg-slate-700'}`;
+            
+            if(pageName === 'history') await loadHistory();
+        }
 
-    // --- 歷史紀錄與匯出 ---
-    function saveToHistory(reportHtml, rawText) {
-        let history = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
-        const d = new Date(), dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-        history.unshift({ id: Date.now(), date: dateStr, raw: rawText, report: reportHtml });
-        localStorage.setItem('flashlog_history', JSON.stringify(history));
-    }
+        async function loadHistory() {
+            const container = document.getElementById('historyContainer');
+            container.innerHTML = '<div class="text-center text-slate-400">讀取中...</div>';
+            
+            let records = [];
 
-    function renderHistory() {
-        let history = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
-        if (history.length === 0) return historyContainer.innerHTML = '<p style="text-align:center; color:#94a3b8;">尚無紀錄</p>';
-        historyContainer.innerHTML = history.map(item => `
-            <div class="history-item">
-                <div class="history-date">📅 ${item.date}</div><div class="history-content">${item.report}</div>
-                <details style="margin-top:10px; font-size:13px;"><summary>查看原始碎記</summary><div style="padding:8px; background:#e2e8f0; border-radius:6px; white-space:pre-wrap;">${item.raw}</div></details>
-            </div>`).join('');
-    }
+            if (window.db) {
+                try {
+                    const q = window.query(window.collection(window.db, "flashlogs"), window.orderBy("date", "desc"));
+                    const querySnapshot = await window.getDocs(q);
+                    querySnapshot.forEach((doc) => records.push(doc.data()));
+                } catch (e) {
+                    console.error("讀取 Firestore 失敗", e);
+                }
+            }
 
-    function exportData() {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([localStorage.getItem('flashlog_history') || '[]'], { type: "application/json" }));
-        a.download = `FlashLog_Backup_${new Date().toISOString().slice(0,10)}.json`;
-        a.click();
-    }
+            // 如果 Firebase 沒開，或讀取失敗，就抓本地資料
+            if(records.length === 0) {
+                records = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
+            }
 
-    // --- SW 註冊 ---
-    if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(e=>console.log(e)));
-</script>
-</body>
-</html>
+            if (records.length === 0) {
+                container.innerHTML = '<div class="text-center text-slate-400 py-4">雲端尚無紀錄</div>';
+                return;
+            }
 
+            container.innerHTML = records.map(item => `
+                <div class="border-b border-slate-200 pb-4 last:border-0">
+                    <div class="font-bold text-slate-800 mb-2">📅 ${item.displayDate}</div>
+                    <div class="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl whitespace-pre-wrap">${item.report.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-slate-900">$1</strong>')}</div>
+                    <details class="mt-2 text-xs text-slate-500 cursor-pointer">
+                        <summary class="hover:text-blue-500">查看原始碎記</summary>
+                        <div class="mt-2 p-2 bg-slate-100 rounded-lg whitespace-pre-wrap">${item.raw}</div>
+                    </details>
+                </div>
+            `).join('');
+        }
+
+        // --- 全域工具 ---
+        window.clearDraft = function() {
+            if(confirm('確定清空？')) { document.getElementById('logInput').value=''; localStorage.setItem('flashlog_draft',''); updateCharCount(); document.getElementById('result').classList.add('hidden'); }
+        }
+        window.updateCharCount = function() { document.getElementById('charCount').innerText = `字數: ${document.getElementById('logInput').value.length}`; }
+        window.exportData = function() {
+            const data = localStorage.getItem('flashlog_history') || '[]'; // 若有 Firebase 需另外匯出邏輯，此處保留本地備份
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+            a.download = `FlashLog_Backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
+        }
+    </script>
 </body>
 </html>
