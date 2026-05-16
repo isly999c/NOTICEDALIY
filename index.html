@@ -201,7 +201,13 @@
             if (records.length === 0) return container.innerHTML = '<div class="text-center text-slate-400 py-4">尚無手機紀錄</div>';
             
             container.innerHTML = records.map(item => {
-                const comp = item.company || '無', iss = item.issues || '無', tsk = item.tasks || '無', prob = item.problemDesc || '無', res = item.result || '無';
+                // 處理引號問題，避免破壞 HTML value 屬性
+                const comp = (item.company || '無').replace(/"/g, '&quot;');
+                const iss = item.issues || '無';
+                const tsk = item.tasks || '無';
+                const prob = item.problemDesc || '無';
+                const res = (item.result || '無').replace(/"/g, '&quot;');
+
                 return `
                 <div class="border-b border-slate-200 pb-5 last:border-0" id="item-${item.id}">
                     <div id="view-${item.id}">
@@ -216,7 +222,7 @@
                     </div>
                     
                     <div id="edit-${item.id}" class="hidden bg-amber-50/50 p-4 rounded-xl border border-amber-200 space-y-3 mt-2">
-                        <h3 class="font-bold text-amber-800 text-sm">✏️ 修正歷史資料 (將同步覆蓋更新 Google 試算表)</h3>
+                        <h3 class="font-bold text-amber-800 text-sm">✏️ 修正歷史資料 (將同步更新 Google 試算表)</h3>
                         <div><label class="block text-xs font-semibold text-slate-500 mb-1">🏢 公司/服務單位</label><input type="text" id="edit-comp-${item.id}" value="${comp}" class="w-full p-2 text-sm border border-slate-300 rounded-lg"></div>
                         <div><label class="block text-xs font-semibold text-slate-500 mb-1">⚠️ 問題與異常</label><textarea id="edit-iss-${item.id}" class="w-full p-2 text-sm border border-slate-300 rounded-lg h-16">${iss}</textarea></div>
                         <div><label class="block text-xs font-semibold text-slate-500 mb-1">📂 工作內容</label><textarea id="edit-tsk-${item.id}" class="w-full p-2 text-sm border border-slate-300 rounded-lg h-20">${tsk}</textarea></div>
@@ -224,7 +230,7 @@
                         <div><label class="block text-xs font-semibold text-slate-500 mb-1">✅ 處理結果</label><input type="text" id="edit-res-${item.id}" value="${res}" class="w-full p-2 text-sm border border-slate-300 rounded-lg"></div>
                         <div class="flex gap-2 justify-end pt-2">
                             <button onclick="exitEditMode('${item.id}')" class="text-xs px-3 py-2 bg-slate-200 text-slate-600 rounded-lg font-bold">取消</button>
-                            <button onclick="saveAndSyncUpdate('${item.id}', '${item.date}', '${item.raw || ''}')" class="text-xs px-3 py-2 bg-emerald-600 text-white rounded-lg font-bold">💾 儲存並更新雲端</button>
+                            <button onclick="saveAndSyncUpdate('${item.id}')" class="text-xs px-3 py-2 bg-emerald-600 text-white rounded-lg font-bold">💾 儲存並更新雲端</button>
                         </div>
                     </div>
                 </div>`;
@@ -240,20 +246,24 @@
             document.getElementById(`edit-${id}`).classList.add('hidden');
         }
 
-        window.saveAndSyncUpdate = async function(id, dateStr, rawText) {
+        // ✅ 修復重點：改為只吃 ID，從 LocalStorage 找回完整資料，避開按鈕換行錯誤
+        window.saveAndSyncUpdate = async function(id) {
+            let history = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
+            let currentItem = history.find(item => item.id === id);
+            if (!currentItem) return alert("找不到該筆資料！");
+
             const sheetUrl = document.getElementById('sheetUrl').value.trim();
             const updated = {
-                date: dateStr, // 拿原日誌的時間戳作為 Sheets 的搜尋標籤，確保覆蓋同一列
+                date: currentItem.date, 
                 company: document.getElementById(`edit-comp-${id}`).value.trim(),
                 issues: document.getElementById(`edit-iss-${id}`).value.trim(),
                 tasks: document.getElementById(`edit-tsk-${id}`).value.trim(),
                 problemDesc: document.getElementById(`edit-prob-${id}`).value.trim(),
                 result: document.getElementById(`edit-res-${id}`).value.trim(),
-                raw: rawText
+                raw: currentItem.raw
             };
 
             // 1. 更新手機本地儲存
-            let history = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
             history = history.map(item => {
                 if(item.id === id) {
                     const newHtml = `<strong>🏢 公司/服務單位</strong><br>${updated.company}<br><br><strong>⚠️ 問題與異常</strong><br>${updated.issues}<br><br><strong>📂 工作內容</strong><br>${updated.tasks}<br><br><strong>📝 問題描述 (售服)</strong><br>${updated.problemDesc}<br><br><strong>✅ 處理結果</strong><br>${updated.result}`;
