@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>閃記日誌 FlashLog</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FlashLog">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: #f5f7fa; 
+            color: #333; 
+            padding: 16px;
+            padding-top: calc(16px + env(safe-area-inset-top));
+        }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        h1 { font-size: 22px; color: #2c3e50; text-align: center; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 14px; font-weight: 600; color: #4a5568; margin-bottom: 6px; }
+        input[type="password"], textarea { 
+            width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 15px; background: #f8fafc; transition: border 0.2s;
+        }
+        input[type="password"]:focus, textarea:focus { border-color: #3182ce; outline: none; background: white; }
+        textarea { height: 160px; resize: none; line-height: 1.5; }
+        .btn-group { display: flex; gap: 10px; margin-bottom: 16px; }
+        button { 
+            flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: opacity 0.2s;
+        }
+        button:active { opacity: 0.8; }
+        .btn-primary { background-color: #3182ce; color: white; }
+        .btn-secondary { background-color: #edf2f7; color: #4a5568; }
+        .btn-mic { background-color: #e53e3e; color: white; }
+        .btn-mic.recording { background-color: #38a169; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        #loading { display: none; text-align: center; margin: 15px 0; font-size: 14px; color: #718096; font-weight: 500; }
+        #result { 
+            margin-top: 20px; padding: 16px; background: #f1f5f9; border-radius: 12px; border-left: 4px solid #3182ce; white-space: pre-wrap; font-size: 14px; line-height: 1.6; display: none; overflow-x: auto;
+        }
+        .footer-tools { display: flex; justify-content: space-between; font-size: 12px; color: #a0aec0; margin-top: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📝 閃記日誌 FlashLog</h1>
+    
+    <div class="form-group">
+        <label for="apiKey">Gemini API Key</label>
+        <input type="password" id="apiKey" placeholder="請貼上你的 API 金鑰 (自動儲存)">
+    </div>
+    
+    <div class="form-group">
+        <label for="logInput">今日工作碎記</label>
+        <textarea id="logInput" placeholder="點擊下方麥克風說話，或直接在此輸入關鍵字、條列點...&#10;例如：&#10;1.刀塔手動換刀正常，自動異常&#10;2.主軸換檔錯誤"></textarea>
+        <div class="footer-tools">
+            <span id="charCount">字數: 0</span>
+            <span id="clearLog" style="cursor:pointer; color:#e53e3e;">清空輸入</span>
+        </div>
+    </div>
+    
+    <div class="btn-group">
+        <button id="micBtn" class="btn-mic">🎤 語音輸入</button>
+    </div>
+    
+    <button id="submitBtn" class="btn-primary" style="width:100%;">✨ AI 一鍵生成專業日報</button>
+    
+    <div id="loading">🧠 AI 正在分析機電數據與工作碎記...</div>
+    <div id="result"></div>
+</div>
+
+<script>
+    // 讀取與儲存 API Key
+    const apiKeyInput = document.getElementById('apiKey');
+    const logInput = document.getElementById('logInput');
+    const micBtn = document.getElementById('micBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const clearLog = document.getElementById('clearLog');
+    const charCount = document.getElementById('charCount');
+    const loadingDiv = document.getElementById('loading');
+    const resultDiv = document.getElementById('result');
+
+    if (localStorage.getItem('flashlog_api_key')) {
+        apiKeyInput.value = localStorage.getItem('flashlog_api_key');
+    }
+
+    apiKeyInput.addEventListener('input', () => {
+        localStorage.setItem('flashlog_api_key', apiKeyInput.value);
+    });
+
+    logInput.addEventListener('input', () => {
+        charCount.innerText = `字數: ${logInput.value.length}`;
+    });
+
+    clearLog.addEventListener('click', () => {
+        if(confirm('確定要清空今天的輸入嗎？')) {
+            logInput.value = '';
+            charCount.innerText = '字數: 0';
+        }
+    });
+
+    // 語音辨識功能 (Web Speech API)
+    let recognition;
+    if ('webkitSpeechRecognition' in window || 'speechRecognition' in window) {
+        const SpeechRecognition = window.webkitSpeechRecognition || window.speechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'zh-TW';
+
+        recognition.onstart = () => {
+            micBtn.classList.add('recording');
+            micBtn.innerText = '🛑 正在聆聽... 再次點擊結束';
+        };
+
+        recognition.onend = () => {
+            micBtn.classList.remove('recording');
+            micBtn.innerText = '🎤 語音輸入';
+        };
+
+        recognition.onresult = (event) => {
+            const resultText = event.results[0][0].transcript;
+            const now = new Date();
+            const timeStr = `[${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}]`;
+            
+            if (logInput.value) {
+                logInput.value += `\n${timeStr} ${resultText}`;
+            } else {
+                logInput.value = `${timeStr} ${resultText}`;
+            }
+            charCount.innerText = `字數: ${logInput.value.length}`;
+        };
+
+        recognition.onerror = (event) => {
+            console.error(event.error);
+            alert('語音辨識發生錯誤: ' + event.error);
+        };
+
+        micBtn.addEventListener('click', () => {
+            if (micBtn.classList.contains('recording')) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        });
+    } else {
+        micBtn.style.backgroundColor = '#a0aec0';
+        micBtn.innerText = '❌ 此瀏覽器不支援語音辨識';
+        micBtn.disabled = true;
+    }
+
+    // 呼叫 Gemini API 統整
+    submitBtn.addEventListener('click', async () => {
+        const apiKey = apiKeyInput.value;
+        const textData = logInput.value;
+
+        if (!apiKey) { return alert('請先輸入 Gemini API Key！'); }
+        if (!textData) { return alert('請先輸入或語音錄入今日的工作內容！'); }
+
+        loadingDiv.style.display = 'block';
+        resultDiv.style.display = 'none';
+
+        const systemPrompt = `你是一位專業的自動化與機電工程職場助理。請將以下使用者提供「零碎、口語、帶有時間戳記」的當日隨手紀錄，統整為一份專業、結構清晰、語氣嚴謹的「每日工作日報」。
+        
+        處理原則：
+        1. 轉化為專業術語：例如將「手動換刀正常自動不行」轉化為「手動換刀功能正常，MDI與自動換刀模式異常」；將「零速錯誤」轉化為「零速檢知錯誤(Zero Speed Detection Error)」。
+        2. 架構化分類：區分出設備維修排查、教育訓練、最終驗收確認等區塊。
+        3. 邏輯推論：根據紀錄中的異常現象，在「技術分析」中給出合理的初步成因推斷與下一步建議。
+
+        請嚴格以下列 Markdown 格式輸出：
+        📅 **本日摘要** (用一句話精煉總結今日進度)
+        📌 **重點工作項目** (條列式，描述具體維修、訓練或測試項目)
+        💡 **技術分析與洞察** (針對今日遇到的機台設備異常，進行原因研判或技術點歸納)
+        🔜 **待辦與接續事項** (後續需追蹤的項目或明日計畫)`;
+
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const payload = {
+            contents: [{
+                role: "user",
+                parts: [{ text: `${systemPrompt}\n\n【使用者今日隨手紀錄】：\n${textData}` }]
+            }],
+            generationConfig: { temperature: 0.2 }
+        };
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            
+            let report = data.candidates[0].content.parts[0].text;
+            
+            // 簡易的 Markdown 標籤加粗與換行轉換，優化畫面渲染
+            report = report.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            resultDiv.innerHTML = report;
+            resultDiv.style.display = 'block';
+        } catch (error) {
+            alert('生成失敗，請檢查 API Key 是否正確或網路連線。\n錯誤訊息: ' + error.message);
+        } finally {
+            loadingDiv.style.display = 'none';
+        }
+    });
+
+    // 註冊 Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker 註冊成功', reg.scope))
+                .catch(err => console.log('Service Worker 註冊失敗', err));
+        });
+    }
+</script>
+
+</body>
+</html>
