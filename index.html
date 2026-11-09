@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>閃記日誌 (同步修正升級版)</title>
+    <title>閃記日誌 FlashLog (NOTICE 試算表專用版)</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1e293b">
+    <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { padding-top: env(safe-area-inset-top); background-color: #f8fafc; }
+        body { padding-top: env(safe-area-inset-top); background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         .page { display: none; }
         .page.active { display: block; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
@@ -17,69 +17,98 @@
 </head>
 <body class="text-slate-700">
 
-    <nav class="flex justify-center gap-4 bg-slate-900 p-4 text-white sticky top-0 z-50 shadow-md">
-        <button id="nav-write" class="px-4 py-2 rounded-full font-bold bg-blue-500 transition-colors" onclick="switchPage('write')">📝 寫日誌</button>
-        <button id="nav-history" class="px-4 py-2 rounded-full font-bold hover:bg-slate-700 transition-colors" onclick="switchPage('history')">📂 手機紀錄</button>
+    <nav class="flex justify-center gap-3 bg-slate-900 p-3.5 text-white sticky top-0 z-50 shadow-md">
+        <button id="nav-write" class="px-5 py-2 rounded-full text-sm font-bold bg-blue-600 transition-colors" onclick="switchPage('write')">📝 快速記日誌</button>
+        <button id="nav-history" class="px-5 py-2 rounded-full text-sm font-bold hover:bg-slate-700 transition-colors" onclick="switchPage('history')">📂 歷史紀錄 (<span id="recordCount">0</span>)</button>
     </nav>
 
-    <div class="max-w-2xl mx-auto p-4 pb-20">
+    <div class="max-w-2xl mx-auto p-4 pb-24">
         
+        <!-- 頁面 1：寫日誌 -->
         <div id="page-write" class="page active">
-            <div class="bg-white p-5 rounded-2xl shadow-sm mb-5 border-l-4 border-emerald-500">
-                <details>
-                    <summary class="font-bold text-slate-800 cursor-pointer outline-none">⚙️ 系統與雲端設定</summary>
-                    <div class="mt-4 space-y-3">
+            <!-- 設定區 -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm mb-4 border-l-4 border-emerald-500">
+                <details id="settingsDetails">
+                    <summary class="font-bold text-slate-800 text-sm cursor-pointer outline-none flex justify-between items-center">
+                        <span>⚙️ API 與 Google 試算表設定</span>
+                        <span id="configBadge" class="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-500">檢查中</span>
+                    </summary>
+                    <div class="mt-4 space-y-3 pt-2 border-t border-slate-100">
                         <div>
                             <label class="block text-xs font-semibold mb-1 text-slate-500">1. Gemini API 金鑰</label>
-                            <input type="password" id="apiKey" placeholder="輸入 API Key..." class="w-full p-2 border border-slate-300 rounded-lg bg-slate-50 text-sm focus:outline-none focus:border-blue-500">
+                            <input type="password" id="apiKey" placeholder="輸入 Gemini API Key..." class="w-full p-2.5 border border-slate-300 rounded-lg bg-slate-50 text-sm">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold mb-1 text-slate-500">2. Google Sheets Web App 網址</label>
-                            <input type="password" id="sheetUrl" placeholder="貼上 Google Apps Script 網址..." class="w-full p-2 border border-slate-300 rounded-lg bg-slate-50 text-sm focus:outline-none focus:border-emerald-500">
+                            <label class="block text-xs font-semibold mb-1 text-slate-500">2. Google Sheets Web App 網址 (選填)</label>
+                            <input type="password" id="sheetUrl" placeholder="貼上 Google Apps Script 網址..." class="w-full p-2.5 border border-slate-300 rounded-lg bg-slate-50 text-sm">
                         </div>
                     </div>
                 </details>
             </div>
 
+            <!-- 輸入區 -->
             <div class="bg-white p-5 rounded-2xl shadow-sm">
                 <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-lg font-bold text-slate-900">今日工作碎記 (精簡條列模式)</h2>
-                    <span id="saveStatus" class="text-xs px-2 py-1 bg-slate-100 text-slate-500 rounded-lg">自動儲存草稿</span>
+                    <h2 class="text-lg font-bold text-slate-900">今日現場隨手記 (零腦補精簡模式)</h2>
+                    <span id="saveStatus" class="text-xs px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg font-medium">自動儲存草稿</span>
                 </div>
 
-                <!-- 常用快選按鈕 -->
-                <div class="flex flex-wrap gap-1.5 mb-3">
-                    <button onclick="insertTag('主軸換檔異常 ')" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200">⚙️ 主軸換檔</button>
-                    <button onclick="insertTag('驅動器異常 ')" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200">🚨 驅動器異常</button>
-                    <button onclick="insertTag('PLC修改與測試 ')" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200">🔌 PLC修改</button>
-                    <button onclick="insertTag('Final Check ')" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200">✅ Final Check</button>
-                    <button onclick="insertTag('教育訓練() ')" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200">🎓 教育訓練</button>
-                    <button onclick="insertTag('與H.Q/Raul討論 ')" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200">🌍 H.Q/Raul</button>
+                <!-- 常用快選詞 (依照 NOTICE 試算表真實習慣設計) -->
+                <div class="mb-3">
+                    <div class="text-xs text-slate-400 mb-1.5">⚡ 點擊快速插入常用詞：</div>
+                    <div class="flex flex-wrap gap-1.5">
+                        <button onclick="insertTag('主軸換檔異常 ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">⚙️ 主軸換檔</button>
+                        <button onclick="insertTag('驅動器異常 ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">🚨 驅動器異常</button>
+                        <button onclick="insertTag('PLC修改與測試 ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">🔌 PLC修改</button>
+                        <button onclick="insertTag('機台驗機、Final Check ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">✅ Final Check</button>
+                        <button onclick="insertTag('教育訓練() ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">🎓 教育訓練</button>
+                        <button onclick="insertTag('與H.Q/Raul討論後 ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">🌍 H.Q/Raul</button>
+                    </div>
                 </div>
                 
-                <textarea id="logInput" placeholder="在此輸入或使用語音（AI 只會幫您分欄並標上 1. 2. 3.，絕不亂加廢話）..." class="w-full h-48 p-3 border border-slate-300 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-500 resize-none"></textarea>
+                <textarea id="logInput" placeholder="直接用講的或打字，不用管排版，AI 只會幫你分欄跟標號 1. 2. 3.，不會亂加廢話！&#10;&#10;範例：今天去奕達驗機，1是刀塔手動換刀正常但MDI跟自動換刀異常，查出來是PLC刀塔模式條件錯誤。2是主軸換檔異常零速檢知錯誤，因為20rpm單位換算錯變成20萬。3是教育訓練對刀跟雷射。" class="w-full h-44 p-3.5 border border-slate-300 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-500 text-base leading-relaxed resize-none"></textarea>
                 
-                <div class="flex justify-between text-xs text-slate-500 mt-2 mb-4">
+                <div class="flex justify-between items-center text-xs text-slate-500 mt-2 mb-4">
                     <span id="charCount">字數: 0</span>
-                    <button onclick="clearDraft()" class="text-red-500 hover:text-red-700">清空草稿</button>
+                    <button onclick="clearDraft()" class="text-red-500 hover:text-red-700 font-medium px-2 py-1">🗑️ 清空草稿</button>
                 </div>
                 
-                <button id="micBtn" class="w-full p-4 mb-3 rounded-xl font-bold bg-slate-200 text-slate-800 flex justify-center items-center gap-2">
-                    🎤 語音輸入 (自動加時間)
-                </button>
+                <div class="grid grid-cols-1 gap-3">
+                    <button id="micBtn" class="w-full p-4 rounded-xl font-bold bg-slate-800 text-white hover:bg-slate-700 flex justify-center items-center gap-2 shadow-sm">
+                        🎤 按一下開始語音輸入
+                    </button>
+                    
+                    <button id="submitBtn" class="w-full p-4 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 flex justify-center items-center gap-2 shadow-sm">
+                        ✨ 整理成 NOTICE 表格格式 (含英文翻譯)
+                    </button>
+                </div>
                 
-                <button id="submitBtn" class="w-full p-4 rounded-xl font-bold bg-blue-500 text-white hover:bg-blue-600 flex justify-center items-center gap-2">
-                    ✨ AI 分類寫入試算表
-                </button>
-                
-                <div id="loading" class="hidden text-center mt-5 text-blue-500 font-bold">🧠 AI 正在整理並寫入試算表，請稍候...</div>
-                <div id="result" class="hidden mt-5 p-4 bg-slate-50 rounded-xl border-l-4 border-blue-500 whitespace-pre-wrap text-sm leading-relaxed"></div>
+                <div id="loading" class="hidden text-center mt-5 p-4 bg-blue-50 text-blue-700 rounded-xl font-bold text-sm animate-pulse">
+                    🧠 正在精準分欄並翻譯 ENGLISH NOTICE（不加贅字）...
+                </div>
+
+                <!-- 產出預覽區 -->
+                <div id="resultBox" class="hidden mt-5">
+                    <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
+                        <span class="text-xs font-bold text-emerald-600">✅ 整理完成 (對齊 NOTICE 試算表 A~F 欄)</span>
+                        <div class="flex gap-2">
+                            <button onclick="copyLastResultTSV()" class="text-xs px-3 py-1.5 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700">
+                                📋 複製 A~F 欄 (貼上試算表)
+                            </button>
+                            <button onclick="copyEnglishNotice()" class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700">
+                                🔤 複製 ENGLISH NOTICE
+                            </button>
+                        </div>
+                    </div>
+                    <div id="result" class="p-4 bg-slate-50 rounded-xl border-l-4 border-blue-600 text-sm leading-relaxed space-y-2.5 whitespace-pre-wrap"></div>
+                </div>
             </div>
         </div>
 
+        <!-- 頁面 2：歷史紀錄 -->
         <div id="page-history" class="page">
             <div class="bg-white p-5 rounded-2xl shadow-sm">
-                <h2 class="text-lg font-bold text-slate-900 mb-4">手機歷史紀錄 (支援直接修正並覆蓋試算表該列)</h2>
+                <h2 class="text-lg font-bold text-slate-900 mb-4">手機歷史紀錄 (可隨時修改)</h2>
                 <div id="historyContainer" class="space-y-6"></div>
             </div>
         </div>
@@ -87,34 +116,61 @@
     </div>
 
     <script>
+        let lastGeneratedItem = null;
+
         window.onload = () => {
             if (localStorage.getItem('flashlog_api_key')) document.getElementById('apiKey').value = localStorage.getItem('flashlog_api_key');
             if (localStorage.getItem('flashlog_sheet_url')) document.getElementById('sheetUrl').value = localStorage.getItem('flashlog_sheet_url');
             if (localStorage.getItem('flashlog_draft')) document.getElementById('logInput').value = localStorage.getItem('flashlog_draft');
+            updateConfigBadge();
             updateCharCount();
             loadHistory();
         };
 
-        document.getElementById('apiKey').addEventListener('input', (e) => localStorage.setItem('flashlog_api_key', e.target.value));
-        document.getElementById('sheetUrl').addEventListener('input', (e) => localStorage.setItem('flashlog_sheet_url', e.target.value));
+        function updateConfigBadge() {
+            const hasKey = !!document.getElementById('apiKey').value.trim();
+            const hasSheet = !!document.getElementById('sheetUrl').value.trim();
+            const badge = document.getElementById('configBadge');
+            if (hasKey && hasSheet) {
+                badge.innerText = '已綁定 API + 試算表';
+                badge.className = 'text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold';
+            } else if (hasKey) {
+                badge.innerText = '已設 API';
+                badge.className = 'text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-bold';
+            } else {
+                badge.innerText = '請先設定 API Key';
+                badge.className = 'text-xs px-2 py-0.5 rounded bg-red-100 text-red-600 font-bold';
+                document.getElementById('settingsDetails').open = true;
+            }
+        }
+
+        document.getElementById('apiKey').addEventListener('input', (e) => {
+            localStorage.setItem('flashlog_api_key', e.target.value);
+            updateConfigBadge();
+        });
+        document.getElementById('sheetUrl').addEventListener('input', (e) => {
+            localStorage.setItem('flashlog_sheet_url', e.target.value);
+            updateConfigBadge();
+        });
         
         let saveTimeout;
         document.getElementById('logInput').addEventListener('input', (e) => {
             updateCharCount();
             const status = document.getElementById('saveStatus');
-            status.innerText = '儲存中...'; status.className = 'text-xs px-2 py-1 bg-yellow-100 text-yellow-700 rounded-lg';
+            status.innerText = '儲存中...';
             clearTimeout(saveTimeout);
             saveTimeout = setTimeout(() => {
                 localStorage.setItem('flashlog_draft', e.target.value);
-                status.innerText = '已儲存草稿'; status.className = 'text-xs px-2 py-1 bg-green-100 text-green-700 rounded-lg';
-            }, 500);
+                status.innerText = '已自動儲存草稿';
+            }, 400);
         });
 
         window.insertTag = function(tagText) {
             const input = document.getElementById('logInput');
             const start = input.selectionStart;
             const end = input.selectionEnd;
-            input.value = input.value.substring(0, start) + tagText + input.value.substring(end);
+            const text = input.value;
+            input.value = text.substring(0, start) + tagText + text.substring(end);
             input.focus();
             input.selectionStart = input.selectionEnd = start + tagText.length;
             input.dispatchEvent(new Event('input'));
@@ -125,11 +181,10 @@
             const recognition = new (window.webkitSpeechRecognition || window.speechRecognition)();
             recognition.lang = 'zh-TW';
             recognition.onstart = () => { micBtn.classList.add('recording'); micBtn.innerText = '🛑 聆聽中... (點擊結束)'; };
-            recognition.onend = () => { micBtn.classList.remove('recording'); micBtn.innerText = '🎤 語音輸入 (自動加時間)'; };
+            recognition.onend = () => { micBtn.classList.remove('recording'); micBtn.innerText = '🎤 按一下開始語音輸入'; };
             recognition.onresult = (e) => {
-                const timeStr = `[${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}]`;
                 const input = document.getElementById('logInput');
-                input.value += (input.value ? '\n' : '') + `${timeStr} ${e.results[0][0].transcript}`;
+                input.value += (input.value ? '\n' : '') + e.results[0][0].transcript;
                 input.dispatchEvent(new Event('input'));
             };
             micBtn.addEventListener('click', () => micBtn.classList.contains('recording') ? recognition.stop() : recognition.start());
@@ -140,34 +195,43 @@
             const sheetUrl = document.getElementById('sheetUrl').value.trim();
             const textData = document.getElementById('logInput').value.trim();
             
-            if (!apiKey) return alert('請輸入 API Key！');
+            if (!apiKey) return alert('請先輸入 Gemini API Key！');
             if (!textData) return alert('請輸入工作紀錄！');
 
             document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('result').classList.add('hidden');
+            document.getElementById('resultBox').classList.add('hidden');
             document.getElementById('submitBtn').disabled = true;
 
-            // ✅ 零腦補、完全貼合 NOTICE 試算表習慣的提示詞
-            const systemPrompt = `你是一位 CNC 工具機與自動化售服工程師的筆記分欄助手。
-【最高原則：禁止腦補、禁止擴寫、禁止官腔廢話】
-只能根據使用者輸入的文字進行「分欄、錯字修正、標上 1. 2. 3. 條列編號」，使用者沒提到的檢查動作或原因，一個字都不准自己加！保留原本的中英夾雜習慣（如 PLC, SUB, MDI, DRVIE, Watch Dog PE, LOOPTIME, CPUTIME, Final Check, H.Q, Raul, 鋒哥 等）。
+            // 嚴格對齊使用者 NOTICE 試算表風格的 Few-Shot Prompt (零腦補)
+            const systemPrompt = `你是一個專門整理 CNC 工具機售服紀錄的分欄助手。
+【最高原則：絕對禁止腦補、禁止擴寫、禁止官腔廢話！】
+使用者討厭 AI 天馬行空亂寫。你只能根據使用者提供的文字進行「欄位分類、錯字修正、標上 1. 2. 3. 條列編號」，使用者沒提到的檢查動作或原因，一個字都不准自己加！保留原本的中英夾雜術語（如 PLC, SUB, MDI, DRVIE, Watch Dog PE,LOOPTIME, CPUTIME, Final Check, H.Q, Raul, 鋒哥 等）。
 
-請參考使用者真實紀錄風格：
+請參考使用者真實試算表 (NOTICE) 的紀錄風格範例：
+【範例 1】
 - company: "奕達"
 - issues: "機台驗機、問題處理"
-- tasks: "機台驗機、刀塔與主軸問題查修、教育訓練"
-- problemDesc: "1. 刀塔手動換刀正常, MDI、自動換刀異常\\n2. 主軸換檔異常，零速檢知錯誤\\n3. 教育訓練(加工對刀、程式轉換、雷射、循圓)\\n4. Final Check (主軸異常未驗機)"
-- result: "1. PLC _刀塔模式 條件錯誤。\\n2. 主軸換檔 ZERO檢知錯誤(20rpm，單位換算錯誤變20萬)\\n4. 驗機，當天主軸異常，主軸功能未驗 (與鋒哥)"
+- problemDesc: "1.刀塔手動換刀正常,MDI、自動換刀異常\\n2.主軸換檔異常，零速檢知錯誤\\n3.教育訓練(加工對刀、程式轉換、雷射、循圓)\\n4.Final Check (主軸異常未驗機)"
+- result: "1.PLC _刀塔模式 條件錯誤。\\n2. 主軸換檔 ZERO檢知錯誤(20rpm，單位換算錯誤變20萬)\\n4.驗機，當天主軸異常，主軸功能未驗 (與鋒哥)"
 - notes: ""
+- englishNotice: "Machine Inspection and Troubleshooting - 1. Manual tool changer works normally, MDI and automatic tool changer are abnormal. 2. Spindle shifting is abnormal, zero speed detection error. 3. Training (machining tool setting, program conversion, laser, circular motion). 4. Final Check (spindle abnormality not inspected)."
 
-請嚴格輸出以下 JSON 格式：
+【範例 2】
+- company: "昶丰齒輪"
+- issues: "ERROR \\" PLC NOT READY\\""
+- problemDesc: "程式加工中，發生ERROR \\" PLC NOT READY\\""
+- result: "1. 檢查ERROR LOG 發生 Watch Dog PE\\n• initial系統，重新回灌備份檔，修改LOOPTIME to 2 & CPUTIME to 3"
+- notes: ""
+- englishNotice: "ERROR \\"PLC NOT READY\\" - An ERROR \\"PLC NOT READY\\" occurred during program processing."
+
+請將以下【今日筆記】轉換為上述 JSON 格式輸出：
 {
-  "company": "公司簡稱 (如：台秀、銳德、奕達、嵩富、PARKER)",
+  "company": "客戶簡稱 (例如：台秀、銳德、奕達、嵩富、PARKER)",
   "issues": "問題與異常 (極簡標題，4~10字)",
-  "tasks": "工作內容 (簡短一句話概括執行的工作項目)",
-  "problemDesc": "問題描述 (售服問題：包含現場異常現象、教育訓練、驗機項目，多項請用 1. 2. 換行條列，忠於原意不灌水)",
-  "result": "處理結果 (售服處理：實際查修原因與修改動作，對應問題編號 1. 2. 條列)",
-  "notes": "備註 (若有特別提及備註、SAP單號或待辦事項請填寫，若無請留空字串)"
+  "problemDesc": "問題描述 (售服問題：包含異常現象、教育訓練、驗機等項目，多項請用 1. 2. 換行條列，忠於原意不灌水)",
+  "result": "處理結果 (售服處理：實際查修原因、修改了什麼PLC/參數/版本，對應問題編號條列，沒寫就留空)",
+  "notes": "備註 (若無特別備註請留空字串)",
+  "englishNotice": "將 issues 與 problemDesc 準確翻譯為英文，格式為：[English Issues] - [English Problem Description]"
 }`;
 
             try {
@@ -175,7 +239,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n【今日紀錄】：\n${textData}` }] }],
+                        contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n【今日筆記】：\n${textData}` }] }],
                         generationConfig: { temperature: 0.0, responseMimeType: "application/json" }
                     })
                 });
@@ -185,48 +249,77 @@
                 
                 const aiResult = JSON.parse(data.candidates[0].content.parts[0].text);
                 const now = new Date();
-                // 保持 YYYY/MM/DD HH:mm 格式，讓後端 doPost 的 new Date(data.date).getTime() 能精準比對毫秒數！
-                const displayDate = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+                // 依照 NOTICE 試算表習慣：只記 YYYY/M/D，不加時間
+                const displayDate = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
 
-                // 100% 對應您 doPost 的 7 個欄位變數 (A~G欄)
                 const sheetData = {
                     date: displayDate,
-                    company: aiResult.company || '無',
-                    issues: aiResult.issues || '無',
-                    tasks: aiResult.tasks || '無',
-                    problemDesc: aiResult.problemDesc || '無',
-                    result: aiResult.result || '無',
-                    raw: aiResult.notes ? `${aiResult.notes} (原記: ${textData})` : textData
+                    company: aiResult.company || '',
+                    issues: aiResult.issues || '',
+                    problemDesc: aiResult.problemDesc || '',
+                    result: aiResult.result || '',
+                    notes: aiResult.notes || '',
+                    englishNotice: aiResult.englishNotice || '',
+                    raw: textData
                 };
+
+                lastGeneratedItem = sheetData;
 
                 if (sheetUrl) {
                     try {
-                        // ✅ 加入 mode: 'no-cors'，解決手機端跨網域傳送被阻擋的問題
                         await fetch(sheetUrl, {
                             method: 'POST',
-                            mode: 'no-cors',
                             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                             body: JSON.stringify(sheetData)
                         });
-                    } catch(e) { console.error(e); }
+                    } catch(e) { console.error('試算表同步失敗:', e); }
                 }
 
-                const reportHtml = `<strong>🏢 公司/服務單位</strong><br>${sheetData.company}<br><br><strong>⚠️ 問題與異常</strong><br>${sheetData.issues}<br><br><strong>📂 工作內容</strong><br>${sheetData.tasks}<br><br><strong>📝 問題描述 (售服)</strong><br>${sheetData.problemDesc}<br><br><strong>✅ 處理結果</strong><br>${sheetData.result}<br><br><strong>📌 備註 (G欄)</strong><br>${sheetData.raw}`;
+                const reportHtml = renderReportHtml(sheetData);
                 document.getElementById('result').innerHTML = reportHtml;
-                document.getElementById('result').classList.remove('hidden');
+                document.getElementById('resultBox').classList.remove('hidden');
 
                 saveToLocal(sheetData, reportHtml);
-                setTimeout(() => { if(confirm('✅ 已成功寫入 Google 試算表！是否清空草稿？')) { clearDraft(); } }, 500);
 
-            } catch (err) { alert('錯誤: ' + err.message); } finally { document.getElementById('loading').classList.add('hidden'); document.getElementById('submitBtn').disabled = false; }
+            } catch (err) {
+                alert('錯誤: ' + err.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('submitBtn').disabled = false;
+            }
         });
+
+        function renderReportHtml(d) {
+            return `<div><strong class="text-slate-900">A. 日期時間：</strong>${d.date}</div>` +
+                   `<div><strong class="text-slate-900">B. 公司/服務單位：</strong>${d.company}</div>` +
+                   `<div><strong class="text-slate-900">C. 問題與異常：</strong>${d.issues}</div>` +
+                   `<div><strong class="text-slate-900">D. 問題描述 (售服問題)：</strong>\n${d.problemDesc}</div>` +
+                   `<div><strong class="text-slate-900">E. 處理結果 (售服處理)：</strong>\n${d.result}</div>` +
+                   `<div><strong class="text-slate-900">F. 備註：</strong>${d.notes || '(空白)'}</div>` +
+                   `<div class="pt-2 border-t border-slate-200 text-slate-600"><strong class="text-blue-700">M. ENGLISH NOTICE：</strong>\n${d.englishNotice || ''}</div>`;
+        }
+
+        // 複製 A~F 欄 (完美支援試算表儲存格內換行)
+        window.copyLastResultTSV = function() {
+            if (!lastGeneratedItem) return;
+            const d = lastGeneratedItem;
+            const quoteCell = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
+            const tsv = [d.date, d.company, d.issues, quoteCell(d.problemDesc), quoteCell(d.result), quoteCell(d.notes)].join('\t');
+            navigator.clipboard.writeText(tsv).then(() => {
+                alert('📋 已複製 A~F 欄！請直接點擊 NOTICE 試算表 A 欄空白處按 Ctrl+V 貼上。');
+            });
+        };
+
+        window.copyEnglishNotice = function() {
+            if (!lastGeneratedItem) return;
+            navigator.clipboard.writeText(lastGeneratedItem.englishNotice || '').then(() => {
+                alert('🔤 已複製 ENGLISH NOTICE！可直接貼到 M 欄。');
+            });
+        };
 
         function saveToLocal(sheetData, reportHtml) {
             let history = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
-            history.unshift({ 
-                id: Date.now().toString(), date: sheetData.date, raw: sheetData.raw, report: reportHtml,
-                company: sheetData.company, issues: sheetData.issues, tasks: sheetData.tasks, problemDesc: sheetData.problemDesc, result: sheetData.result
-            });
+            history.unshift({ id: Date.now().toString(), ...sheetData, report: reportHtml });
             localStorage.setItem('flashlog_history', JSON.stringify(history));
             loadHistory();
         }
@@ -234,111 +327,93 @@
         window.switchPage = function(pageName) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.getElementById(`page-${pageName}`).classList.add('active');
-            document.getElementById('nav-write').className = `px-4 py-2 rounded-full font-bold transition-colors ${pageName==='write'?'bg-blue-500':'hover:bg-slate-700'}`;
-            document.getElementById('nav-history').className = `px-4 py-2 rounded-full font-bold transition-colors ${pageName==='history'?'bg-blue-500':'hover:bg-slate-700'}`;
+            document.getElementById('nav-write').className = `px-5 py-2 rounded-full text-sm font-bold transition-colors ${pageName==='write'?'bg-blue-600':'hover:bg-slate-700'}`;
+            document.getElementById('nav-history').className = `px-5 py-2 rounded-full text-sm font-bold transition-colors ${pageName==='history'?'bg-blue-600':'hover:bg-slate-700'}`;
             if(pageName === 'history') loadHistory();
-        }
+        };
 
         function loadHistory() {
             const container = document.getElementById('historyContainer');
             let records = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
-            if (records.length === 0) return container.innerHTML = '<div class="text-center text-slate-400 py-4">尚無手機紀錄</div>';
+            document.getElementById('recordCount').innerText = records.length;
+            if (records.length === 0) return container.innerHTML = '<div class="text-center text-slate-400 py-8">尚無歷史紀錄</div>';
             
             container.innerHTML = records.map(item => {
-                const comp = (item.company || '無').replace(/"/g, '&quot;');
-                const iss = item.issues || '無';
-                const tsk = item.tasks || '無';
-                const prob = item.problemDesc || '無';
-                const res = (item.result || '無').replace(/"/g, '&quot;');
-                const rawNote = (item.raw || '').replace(/"/g, '&quot;');
+                const comp = (item.company || '').replace(/"/g, '&quot;');
+                const iss = (item.issues || '').replace(/"/g, '&quot;');
+                const prob = item.problemDesc || '';
+                const res = item.result || '';
+                const nts = (item.notes || '').replace(/"/g, '&quot;');
+                const eng = item.englishNotice || '';
 
                 return `
                 <div class="border-b border-slate-200 pb-5 last:border-0" id="item-${item.id}">
                     <div id="view-${item.id}">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="font-bold text-slate-800">📅 ${item.date}</div>
-                            <div class="flex gap-2">
-                                <button onclick="enterEditMode('${item.id}')" class="text-xs px-2 py-1 bg-amber-100 text-amber-700 rounded-lg font-bold hover:bg-amber-200">✏️ 修正</button>
-                                <button onclick="deleteRecord('${item.id}')" class="text-xs px-2 py-1 bg-red-100 text-red-600 rounded-lg font-bold hover:bg-red-200">🗑️ 刪除</button>
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="font-bold text-slate-800 text-sm">📅 ${item.date} — <span class="text-blue-600">${comp}</span></div>
+                            <div class="flex gap-1.5">
+                                <button onclick="enterEditMode('${item.id}')" class="text-xs px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg font-bold">✏️ 修正</button>
+                                <button onclick="deleteRecord('${item.id}')" class="text-xs px-2.5 py-1 bg-red-100 text-red-600 rounded-lg font-bold">🗑️</button>
                             </div>
                         </div>
-                        <div class="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl whitespace-pre-wrap">${item.report || `<strong>🏢 公司/服務單位</strong><br>${comp}<br><br><strong>⚠️ 問題與異常</strong><br>${iss}<br><br><strong>📂 工作內容</strong><br>${tsk}<br><br><strong>📝 問題描述 (售服)</strong><br>${prob}<br><br><strong>✅ 處理結果</strong><br>${res}<br><br><strong>📌 備註 (G欄)</strong><br>${rawNote}`}</div>
+                        <div class="text-sm text-slate-600 bg-slate-50 p-3.5 rounded-xl space-y-2 whitespace-pre-wrap leading-relaxed">${renderReportHtml(item)}</div>
                     </div>
                     
-                    <div id="edit-${item.id}" class="hidden bg-amber-50/50 p-4 rounded-xl border border-amber-200 space-y-3 mt-2">
-                        <h3 class="font-bold text-amber-800 text-sm">✏️ 修正歷史資料 (將透過時間戳記同步覆蓋 Google 試算表該列)</h3>
-                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">🏢 公司/服務單位 (B欄)</label><input type="text" id="edit-comp-${item.id}" value="${comp}" class="w-full p-2 text-sm border border-slate-300 rounded-lg"></div>
-                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">⚠️ 問題與異常 (C欄)</label><textarea id="edit-iss-${item.id}" class="w-full p-2 text-sm border border-slate-300 rounded-lg h-16">${iss}</textarea></div>
-                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">📂 工作內容 (D欄)</label><textarea id="edit-tsk-${item.id}" class="w-full p-2 text-sm border border-slate-300 rounded-lg h-16">${tsk}</textarea></div>
-                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">📝 問題描述 (E欄，修改後會自動重翻 N 欄英文)</label><textarea id="edit-prob-${item.id}" class="w-full p-2 text-sm border border-slate-300 rounded-lg h-24">${prob}</textarea></div>
-                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">✅ 處理結果 (F欄)</label><textarea id="edit-res-${item.id}" class="w-full p-2 text-sm border border-slate-300 rounded-lg h-20">${res}</textarea></div>
-                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">📌 備註 (G欄)</label><input type="text" id="edit-raw-${item.id}" value="${rawNote}" class="w-full p-2 text-sm border border-slate-300 rounded-lg"></div>
+                    <div id="edit-${item.id}" class="hidden bg-amber-50/60 p-4 rounded-xl border border-amber-200 space-y-3 mt-2">
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">B. 公司/服務單位</label><input type="text" id="edit-comp-${item.id}" value="${comp}" class="w-full p-2 text-sm border rounded-lg"></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">C. 問題與異常</label><input type="text" id="edit-iss-${item.id}" value="${iss}" class="w-full p-2 text-sm border rounded-lg"></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">D. 問題描述 (售服問題)</label><textarea id="edit-prob-${item.id}" class="w-full p-2 text-sm border rounded-lg h-24">${prob}</textarea></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">E. 處理結果 (售服處理)</label><textarea id="edit-res-${item.id}" class="w-full p-2 text-sm border rounded-lg h-24">${res}</textarea></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">F. 備註</label><input type="text" id="edit-nts-${item.id}" value="${nts}" class="w-full p-2 text-sm border rounded-lg"></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">M. ENGLISH NOTICE</label><textarea id="edit-eng-${item.id}" class="w-full p-2 text-sm border rounded-lg h-20">${eng}</textarea></div>
                         <div class="flex gap-2 justify-end pt-2">
                             <button onclick="exitEditMode('${item.id}')" class="text-xs px-3 py-2 bg-slate-200 text-slate-600 rounded-lg font-bold">取消</button>
-                            <button onclick="saveAndSyncUpdate('${item.id}')" class="text-xs px-3 py-2 bg-emerald-600 text-white rounded-lg font-bold">💾 儲存並更新雲端</button>
+                            <button onclick="saveAndSyncUpdate('${item.id}')" class="text-xs px-3 py-2 bg-emerald-600 text-white rounded-lg font-bold">💾 儲存更新</button>
                         </div>
                     </div>
                 </div>`;
             }).join('');
         }
 
-        window.enterEditMode = function(id) {
-            document.getElementById(`view-${id}`).classList.add('hidden');
-            document.getElementById(`edit-${id}`).classList.remove('hidden');
-        }
-        window.exitEditMode = function(id) {
-            document.getElementById(`view-${id}`).classList.remove('hidden');
-            document.getElementById(`edit-${id}`).classList.add('hidden');
-        }
+        window.enterEditMode = (id) => { document.getElementById(`view-${id}`).classList.add('hidden'); document.getElementById(`edit-${id}`).classList.remove('hidden'); };
+        window.exitEditMode = (id) => { document.getElementById(`view-${id}`).classList.remove('hidden'); document.getElementById(`edit-${id}`).classList.add('hidden'); };
 
         window.saveAndSyncUpdate = async function(id) {
             let history = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
             let currentItem = history.find(item => item.id === id);
-            if (!currentItem) return alert("找不到該筆資料！");
+            if (!currentItem) return;
 
-            const sheetUrl = document.getElementById('sheetUrl').value.trim();
             const updated = {
-                date: currentItem.date, // 保持原時間戳記，讓後端 doPost 找到同一列覆蓋！
+                ...currentItem,
                 company: document.getElementById(`edit-comp-${id}`).value.trim(),
                 issues: document.getElementById(`edit-iss-${id}`).value.trim(),
-                tasks: document.getElementById(`edit-tsk-${id}`).value.trim(),
                 problemDesc: document.getElementById(`edit-prob-${id}`).value.trim(),
                 result: document.getElementById(`edit-res-${id}`).value.trim(),
-                raw: document.getElementById(`edit-raw-${id}`).value.trim()
+                notes: document.getElementById(`edit-nts-${id}`).value.trim(),
+                englishNotice: document.getElementById(`edit-eng-${id}`).value.trim()
             };
 
-            history = history.map(item => {
-                if(item.id === id) {
-                    const newHtml = `<strong>🏢 公司/服務單位</strong><br>${updated.company}<br><br><strong>⚠️ 問題與異常</strong><br>${updated.issues}<br><br><strong>📂 工作內容</strong><br>${updated.tasks}<br><br><strong>📝 問題描述 (售服)</strong><br>${updated.problemDesc}<br><br><strong>✅ 處理結果</strong><br>${updated.result}<br><br><strong>📌 備註 (G欄)</strong><br>${updated.raw}`;
-                    return { ...item, ...updated, report: newHtml };
-                }
-                return item;
-            });
+            history = history.map(item => item.id === id ? { ...updated, report: renderReportHtml(updated) } : item);
             localStorage.setItem('flashlog_history', JSON.stringify(history));
-
-            if (sheetUrl) {
-                try {
-                    await fetch(sheetUrl, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify(updated)
-                    });
-                    alert("✅ 本地與 Google 試算表皆已同步更新成功！");
-                } catch(e) { alert("⚠️ 本地修正成功，但同步到試算表失敗，請確認網路。"); }
-            } else { alert("✅ 本地修正成功！"); }
-            
             loadHistory();
-        }
+        };
 
         window.deleteRecord = function(id) {
-            if(!confirm('確定刪除此本地備份？(此操作不影響已傳到試算表的歷史資料)')) return;
+            if(!confirm('確定刪除此筆手機紀錄？')) return;
             let history = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
             localStorage.setItem('flashlog_history', JSON.stringify(history.filter(item => item.id !== id)));
             loadHistory();
-        }
-        window.clearDraft = function() { document.getElementById('logInput').value=''; localStorage.setItem('flashlog_draft',''); updateCharCount(); document.getElementById('result').classList.add('hidden'); }
-        window.updateCharCount = function() { document.getElementById('charCount').innerText = `字數: ${document.getElementById('logInput').value.length}`; }
+        };
+
+        window.clearDraft = function() {
+            document.getElementById('logInput').value = '';
+            localStorage.setItem('flashlog_draft', '');
+            updateCharCount();
+            document.getElementById('resultBox').classList.add('hidden');
+        };
+        window.updateCharCount = function() {
+            document.getElementById('charCount').innerText = `字數: ${document.getElementById('logInput').value.length}`;
+        };
     </script>
 </body>
 </html>
