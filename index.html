@@ -42,12 +42,22 @@
             </div>
 
             <div class="bg-white p-5 rounded-2xl shadow-sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-bold text-slate-900">今日工作碎記</h2>
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold text-slate-900">今日工作碎記 (精簡條列模式)</h2>
                     <span id="saveStatus" class="text-xs px-2 py-1 bg-slate-100 text-slate-500 rounded-lg">自動儲存草稿</span>
                 </div>
+
+                <!-- 常用快選按鈕 -->
+                <div class="flex flex-wrap gap-1.5 mb-3">
+                    <button onclick="insertTag('主軸換檔異常 ')" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200">⚙️ 主軸換檔</button>
+                    <button onclick="insertTag('驅動器異常 ')" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200">🚨 驅動器異常</button>
+                    <button onclick="insertTag('PLC修改與測試 ')" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200">🔌 PLC修改</button>
+                    <button onclick="insertTag('Final Check ')" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200">✅ Final Check</button>
+                    <button onclick="insertTag('教育訓練() ')" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200">🎓 教育訓練</button>
+                    <button onclick="insertTag('與H.Q/Raul討論 ')" class="text-xs px-2.5 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg border border-slate-200">🌍 H.Q/Raul</button>
+                </div>
                 
-                <textarea id="logInput" placeholder="在此輸入或使用語音..." class="w-full h-48 p-3 border border-slate-300 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-500 resize-none"></textarea>
+                <textarea id="logInput" placeholder="在此輸入或使用語音（AI 只會幫您分欄並標上 1. 2. 3.，絕不亂加廢話）..." class="w-full h-48 p-3 border border-slate-300 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-500 resize-none"></textarea>
                 
                 <div class="flex justify-between text-xs text-slate-500 mt-2 mb-4">
                     <span id="charCount">字數: 0</span>
@@ -62,14 +72,14 @@
                     ✨ AI 分類寫入試算表
                 </button>
                 
-                <div id="loading" class="hidden text-center mt-5 text-blue-500 font-bold">🧠 AI 正在分析與寫入試算表，請稍候...</div>
+                <div id="loading" class="hidden text-center mt-5 text-blue-500 font-bold">🧠 AI 正在整理並寫入試算表，請稍候...</div>
                 <div id="result" class="hidden mt-5 p-4 bg-slate-50 rounded-xl border-l-4 border-blue-500 whitespace-pre-wrap text-sm leading-relaxed"></div>
             </div>
         </div>
 
         <div id="page-history" class="page">
             <div class="bg-white p-5 rounded-2xl shadow-sm">
-                <h2 class="text-lg font-bold text-slate-900 mb-4">手機歷史紀錄 (支援直接修正)</h2>
+                <h2 class="text-lg font-bold text-slate-900 mb-4">手機歷史紀錄 (支援直接修正並覆蓋試算表該列)</h2>
                 <div id="historyContainer" class="space-y-6"></div>
             </div>
         </div>
@@ -100,12 +110,22 @@
             }, 500);
         });
 
+        window.insertTag = function(tagText) {
+            const input = document.getElementById('logInput');
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            input.value = input.value.substring(0, start) + tagText + input.value.substring(end);
+            input.focus();
+            input.selectionStart = input.selectionEnd = start + tagText.length;
+            input.dispatchEvent(new Event('input'));
+        };
+
         const micBtn = document.getElementById('micBtn');
         if ('webkitSpeechRecognition' in window || 'speechRecognition' in window) {
             const recognition = new (window.webkitSpeechRecognition || window.speechRecognition)();
             recognition.lang = 'zh-TW';
             recognition.onstart = () => { micBtn.classList.add('recording'); micBtn.innerText = '🛑 聆聽中... (點擊結束)'; };
-            recognition.onend = () => { micBtn.classList.remove('recording'); micBtn.innerText = '🎤 語音輸入'; };
+            recognition.onend = () => { micBtn.classList.remove('recording'); micBtn.innerText = '🎤 語音輸入 (自動加時間)'; };
             recognition.onresult = (e) => {
                 const timeStr = `[${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}]`;
                 const input = document.getElementById('logInput');
@@ -120,27 +140,43 @@
             const sheetUrl = document.getElementById('sheetUrl').value.trim();
             const textData = document.getElementById('logInput').value.trim();
             
-            if (!apiKey) return alert('請輸入 API Key！'); if (!textData) return alert('請輸入工作紀錄！');
+            if (!apiKey) return alert('請輸入 API Key！');
+            if (!textData) return alert('請輸入工作紀錄！');
 
             document.getElementById('loading').classList.remove('hidden');
             document.getElementById('result').classList.add('hidden');
             document.getElementById('submitBtn').disabled = true;
 
-            const systemPrompt = `你是一位專業的機電工程售後服務助理。請將使用者的隨手紀錄修正為專業術語，並嚴格以 JSON 格式輸出。
+            // ✅ 零腦補、完全貼合 NOTICE 試算表習慣的提示詞
+            const systemPrompt = `你是一位 CNC 工具機與自動化售服工程師的筆記分欄助手。
+【最高原則：禁止腦補、禁止擴寫、禁止官腔廢話】
+只能根據使用者輸入的文字進行「分欄、錯字修正、標上 1. 2. 3. 條列編號」，使用者沒提到的檢查動作或原因，一個字都不准自己加！保留原本的中英夾雜習慣（如 PLC, SUB, MDI, DRVIE, Watch Dog PE, LOOPTIME, CPUTIME, Final Check, H.Q, Raul, 鋒哥 等）。
+
+請參考使用者真實紀錄風格：
+- company: "奕達"
+- issues: "機台驗機、問題處理"
+- tasks: "機台驗機、刀塔與主軸問題查修、教育訓練"
+- problemDesc: "1. 刀塔手動換刀正常, MDI、自動換刀異常\\n2. 主軸換檔異常，零速檢知錯誤\\n3. 教育訓練(加工對刀、程式轉換、雷射、循圓)\\n4. Final Check (主軸異常未驗機)"
+- result: "1. PLC _刀塔模式 條件錯誤。\\n2. 主軸換檔 ZERO檢知錯誤(20rpm，單位換算錯誤變20萬)\\n4. 驗機，當天主軸異常，主軸功能未驗 (與鋒哥)"
+- notes: ""
+
+請嚴格輸出以下 JSON 格式：
 {
-  "company": "公司名稱或服務單位",
-  "issues": "問題與異常 (簡述機台報警或故障項目)",
-  "tasks": "工作內容 (執行的維修、檢測或培訓動作)",
-  "problemDesc": "問題描述 (詳細敘述現場故障現象)",
-  "result": "處理結果 (售服處理進度，如：已排除、待料、需追蹤)"
+  "company": "公司簡稱 (如：台秀、銳德、奕達、嵩富、PARKER)",
+  "issues": "問題與異常 (極簡標題，4~10字)",
+  "tasks": "工作內容 (簡短一句話概括執行的工作項目)",
+  "problemDesc": "問題描述 (售服問題：包含現場異常現象、教育訓練、驗機項目，多項請用 1. 2. 換行條列，忠於原意不灌水)",
+  "result": "處理結果 (售服處理：實際查修原因與修改動作，對應問題編號 1. 2. 條列)",
+  "notes": "備註 (若有特別提及備註、SAP單號或待辦事項請填寫，若無請留空字串)"
 }`;
 
             try {
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n【今日紀錄】：\n${textData}` }] }],
-                        generationConfig: { temperature: 0.1, responseMimeType: "application/json" }
+                        generationConfig: { temperature: 0.0, responseMimeType: "application/json" }
                     })
                 });
                 
@@ -149,8 +185,10 @@
                 
                 const aiResult = JSON.parse(data.candidates[0].content.parts[0].text);
                 const now = new Date();
+                // 保持 YYYY/MM/DD HH:mm 格式，讓後端 doPost 的 new Date(data.date).getTime() 能精準比對毫秒數！
                 const displayDate = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
+                // 100% 對應您 doPost 的 7 個欄位變數 (A~G欄)
                 const sheetData = {
                     date: displayDate,
                     company: aiResult.company || '無',
@@ -158,16 +196,22 @@
                     tasks: aiResult.tasks || '無',
                     problemDesc: aiResult.problemDesc || '無',
                     result: aiResult.result || '無',
-                    raw: textData
+                    raw: aiResult.notes ? `${aiResult.notes} (原記: ${textData})` : textData
                 };
 
                 if (sheetUrl) {
                     try {
-                        await fetch(sheetUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(sheetData) });
+                        // ✅ 加入 mode: 'no-cors'，解決手機端跨網域傳送被阻擋的問題
+                        await fetch(sheetUrl, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify(sheetData)
+                        });
                     } catch(e) { console.error(e); }
                 }
 
-                const reportHtml = `<strong>🏢 公司/服務單位</strong><br>${sheetData.company}<br><br><strong>⚠️ 問題與異常</strong><br>${sheetData.issues}<br><br><strong>📂 工作內容</strong><br>${sheetData.tasks}<br><br><strong>📝 問題描述 (售服)</strong><br>${sheetData.problemDesc}<br><br><strong>✅ 處理結果</strong><br>${sheetData.result}`;
+                const reportHtml = `<strong>🏢 公司/服務單位</strong><br>${sheetData.company}<br><br><strong>⚠️ 問題與異常</strong><br>${sheetData.issues}<br><br><strong>📂 工作內容</strong><br>${sheetData.tasks}<br><br><strong>📝 問題描述 (售服)</strong><br>${sheetData.problemDesc}<br><br><strong>✅ 處理結果</strong><br>${sheetData.result}<br><br><strong>📌 備註 (G欄)</strong><br>${sheetData.raw}`;
                 document.getElementById('result').innerHTML = reportHtml;
                 document.getElementById('result').classList.remove('hidden');
 
@@ -201,12 +245,12 @@
             if (records.length === 0) return container.innerHTML = '<div class="text-center text-slate-400 py-4">尚無手機紀錄</div>';
             
             container.innerHTML = records.map(item => {
-                // 處理引號問題，避免破壞 HTML value 屬性
                 const comp = (item.company || '無').replace(/"/g, '&quot;');
                 const iss = item.issues || '無';
                 const tsk = item.tasks || '無';
                 const prob = item.problemDesc || '無';
                 const res = (item.result || '無').replace(/"/g, '&quot;');
+                const rawNote = (item.raw || '').replace(/"/g, '&quot;');
 
                 return `
                 <div class="border-b border-slate-200 pb-5 last:border-0" id="item-${item.id}">
@@ -218,16 +262,17 @@
                                 <button onclick="deleteRecord('${item.id}')" class="text-xs px-2 py-1 bg-red-100 text-red-600 rounded-lg font-bold hover:bg-red-200">🗑️ 刪除</button>
                             </div>
                         </div>
-                        <div class="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl">${item.report || `<strong>🏢 公司/服務單位</strong><br>${comp}<br><br><strong>⚠️ 問題與異常</strong><br>${iss}<br><br><strong>📂 工作內容</strong><br>${tsk}<br><br><strong>📝 問題描述 (售服)</strong><br>${prob}<br><br><strong>✅ 處理結果</strong><br>${res}`}</div>
+                        <div class="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl whitespace-pre-wrap">${item.report || `<strong>🏢 公司/服務單位</strong><br>${comp}<br><br><strong>⚠️ 問題與異常</strong><br>${iss}<br><br><strong>📂 工作內容</strong><br>${tsk}<br><br><strong>📝 問題描述 (售服)</strong><br>${prob}<br><br><strong>✅ 處理結果</strong><br>${res}<br><br><strong>📌 備註 (G欄)</strong><br>${rawNote}`}</div>
                     </div>
                     
                     <div id="edit-${item.id}" class="hidden bg-amber-50/50 p-4 rounded-xl border border-amber-200 space-y-3 mt-2">
-                        <h3 class="font-bold text-amber-800 text-sm">✏️ 修正歷史資料 (將同步更新 Google 試算表)</h3>
-                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">🏢 公司/服務單位</label><input type="text" id="edit-comp-${item.id}" value="${comp}" class="w-full p-2 text-sm border border-slate-300 rounded-lg"></div>
-                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">⚠️ 問題與異常</label><textarea id="edit-iss-${item.id}" class="w-full p-2 text-sm border border-slate-300 rounded-lg h-16">${iss}</textarea></div>
-                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">📂 工作內容</label><textarea id="edit-tsk-${item.id}" class="w-full p-2 text-sm border border-slate-300 rounded-lg h-20">${tsk}</textarea></div>
-                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">📝 問題描述 (售服)</label><textarea id="edit-prob-${item.id}" class="w-full p-2 text-sm border border-slate-300 rounded-lg h-16">${prob}</textarea></div>
-                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">✅ 處理結果</label><input type="text" id="edit-res-${item.id}" value="${res}" class="w-full p-2 text-sm border border-slate-300 rounded-lg"></div>
+                        <h3 class="font-bold text-amber-800 text-sm">✏️ 修正歷史資料 (將透過時間戳記同步覆蓋 Google 試算表該列)</h3>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">🏢 公司/服務單位 (B欄)</label><input type="text" id="edit-comp-${item.id}" value="${comp}" class="w-full p-2 text-sm border border-slate-300 rounded-lg"></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">⚠️ 問題與異常 (C欄)</label><textarea id="edit-iss-${item.id}" class="w-full p-2 text-sm border border-slate-300 rounded-lg h-16">${iss}</textarea></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">📂 工作內容 (D欄)</label><textarea id="edit-tsk-${item.id}" class="w-full p-2 text-sm border border-slate-300 rounded-lg h-16">${tsk}</textarea></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">📝 問題描述 (E欄，修改後會自動重翻 N 欄英文)</label><textarea id="edit-prob-${item.id}" class="w-full p-2 text-sm border border-slate-300 rounded-lg h-24">${prob}</textarea></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">✅ 處理結果 (F欄)</label><textarea id="edit-res-${item.id}" class="w-full p-2 text-sm border border-slate-300 rounded-lg h-20">${res}</textarea></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">📌 備註 (G欄)</label><input type="text" id="edit-raw-${item.id}" value="${rawNote}" class="w-full p-2 text-sm border border-slate-300 rounded-lg"></div>
                         <div class="flex gap-2 justify-end pt-2">
                             <button onclick="exitEditMode('${item.id}')" class="text-xs px-3 py-2 bg-slate-200 text-slate-600 rounded-lg font-bold">取消</button>
                             <button onclick="saveAndSyncUpdate('${item.id}')" class="text-xs px-3 py-2 bg-emerald-600 text-white rounded-lg font-bold">💾 儲存並更新雲端</button>
@@ -246,7 +291,6 @@
             document.getElementById(`edit-${id}`).classList.add('hidden');
         }
 
-        // ✅ 修復重點：改為只吃 ID，從 LocalStorage 找回完整資料，避開按鈕換行錯誤
         window.saveAndSyncUpdate = async function(id) {
             let history = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
             let currentItem = history.find(item => item.id === id);
@@ -254,29 +298,32 @@
 
             const sheetUrl = document.getElementById('sheetUrl').value.trim();
             const updated = {
-                date: currentItem.date, 
+                date: currentItem.date, // 保持原時間戳記，讓後端 doPost 找到同一列覆蓋！
                 company: document.getElementById(`edit-comp-${id}`).value.trim(),
                 issues: document.getElementById(`edit-iss-${id}`).value.trim(),
                 tasks: document.getElementById(`edit-tsk-${id}`).value.trim(),
                 problemDesc: document.getElementById(`edit-prob-${id}`).value.trim(),
                 result: document.getElementById(`edit-res-${id}`).value.trim(),
-                raw: currentItem.raw
+                raw: document.getElementById(`edit-raw-${id}`).value.trim()
             };
 
-            // 1. 更新手機本地儲存
             history = history.map(item => {
                 if(item.id === id) {
-                    const newHtml = `<strong>🏢 公司/服務單位</strong><br>${updated.company}<br><br><strong>⚠️ 問題與異常</strong><br>${updated.issues}<br><br><strong>📂 工作內容</strong><br>${updated.tasks}<br><br><strong>📝 問題描述 (售服)</strong><br>${updated.problemDesc}<br><br><strong>✅ 處理結果</strong><br>${updated.result}`;
+                    const newHtml = `<strong>🏢 公司/服務單位</strong><br>${updated.company}<br><br><strong>⚠️ 問題與異常</strong><br>${updated.issues}<br><br><strong>📂 工作內容</strong><br>${updated.tasks}<br><br><strong>📝 問題描述 (售服)</strong><br>${updated.problemDesc}<br><br><strong>✅ 處理結果</strong><br>${updated.result}<br><br><strong>📌 備註 (G欄)</strong><br>${updated.raw}`;
                     return { ...item, ...updated, report: newHtml };
                 }
                 return item;
             });
             localStorage.setItem('flashlog_history', JSON.stringify(history));
 
-            // 2. 發送更新指令到 Google Sheets
             if (sheetUrl) {
                 try {
-                    await fetch(sheetUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(updated) });
+                    await fetch(sheetUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(updated)
+                    });
                     alert("✅ 本地與 Google 試算表皆已同步更新成功！");
                 } catch(e) { alert("⚠️ 本地修正成功，但同步到試算表失敗，請確認網路。"); }
             } else { alert("✅ 本地修正成功！"); }
