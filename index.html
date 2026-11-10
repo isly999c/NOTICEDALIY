@@ -96,7 +96,7 @@
                         <span id="syncStatusText" class="text-xs font-bold text-emerald-600">✅ 整理完成</span>
                         <div class="flex gap-2">
                             <button onclick="copyLastResultTSV()" class="text-xs px-3 py-1.5 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700">
-                                📋 複製 A~G 欄 (貼上試算表)
+                                📋 複製 A~F 欄 (貼上試算表)
                             </button>
                             <button onclick="copyEnglishNotice()" class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700">
                                 🔤 複製 ENGLISH NOTICE
@@ -197,20 +197,22 @@
             micBtn.addEventListener('click', () => micBtn.classList.contains('recording') ? recognition.stop() : recognition.start());
         } else { micBtn.style.display = 'none'; }
 
+        // ✅ 真實傳送並驗證 Google Apps Script 回傳結果 (同時相容 6 欄與 7 欄表格)
         async function postToGoogleSheet(sheetUrl, itemData) {
             if (!sheetUrl.includes('script.google.com')) {
-                throw new Error('網址錯誤！請貼上 Google Apps Script 部署後的網頁應用程式網址 (https://script.google.com/.../exec)。');
+                throw new Error('網址錯誤！請貼上 Google Apps Script 部署後的網頁應用程式網址 (https://script.google.com/.../exec)，而不是試算表本身的網址。');
             }
 
             const payloadForGAS = {
                 date: itemData.date,
                 company: itemData.company,
                 issues: itemData.issues,
+                tasks: itemData.tasks || itemData.issues || '',
                 problemDesc: itemData.problemDesc,
                 result: itemData.result,
-                englishNotice: itemData.englishNotice,
                 notes: itemData.notes,
-                raw: itemData.notes || ''
+                englishNotice: itemData.englishNotice,
+                raw: itemData.notes || itemData.raw || ''
             };
 
             const res = await fetch(sheetUrl, {
@@ -234,6 +236,7 @@
             return json;
         }
 
+        // 🔌 測試連線按鈕
         window.testSheetConnection = async function() {
             const sheetUrl = document.getElementById('sheetUrl').value.trim();
             if (!sheetUrl) return alert('請先在欄位中貼上 Google Sheets Web App 網址！');
@@ -244,10 +247,11 @@
                     date: testDate,
                     company: '連線測試',
                     issues: '系統連線測試OK',
+                    tasks: '測試寫入',
                     problemDesc: '1. 測試從閃記日誌寫入 Google 試算表',
                     result: '1. 連線成功',
-                    englishNotice: 'Connection Test - 1. Successfully connected to Google Sheets.',
-                    notes: '此列可直接刪除'
+                    notes: '此列可直接刪除',
+                    englishNotice: 'Connection Test - 1. Successfully connected to Google Sheets.'
                 });
                 alert('🎉 測試成功！已經在您的 Google 試算表最下方寫入一筆「連線測試」資料，請去試算表查看！');
             } catch (err) {
@@ -269,12 +273,13 @@
 
             const systemPrompt = `你是一個專門整理 CNC 工具機售服紀錄的分欄助手。
 【最高原則：絕對禁止腦補、禁止擴寫、禁止官腔廢話！】
-使用者討厭 AI 天馬行空亂寫。你只能根據使用者提供的文字進行「欄位分類、錯字修正、標上 1. 2. 3. 條列編號」，使用者沒提到的檢查動作或原因，一個字都不准自己加！保留原本的中英夾雜術語（如 PLC, SUB, MDI, DRVIE, Watch Dog PE, LOOPTIME, CPUTIME, Final Check, DINA, H.Q, Raul, 鋒哥 等）。
+使用者討厭 AI 天馬行空亂寫。你只能根據使用者提供的文字進行「欄位分類、錯字修正、標上 1. 2. 3. 條列編號」，使用者沒提到的檢查動作或原因，一個字都不准自己加！保留原本的中英夾雜術語（如 PLC, SUB, MDI, DRVIE, Watch Dog PE, LOOPTIME, CPUTIME, Final Check, H.Q, Raul, 鋒哥 等）。
 
 請參考使用者真實試算表 (NOTICE) 的紀錄風格範例：
 【範例 1】
 - company: "奕達"
 - issues: "機台驗機、問題處理"
+- tasks: "機台驗機、問題處理"
 - problemDesc: "1.刀塔手動換刀正常,MDI、自動換刀異常\\n2.主軸換檔異常，零速檢知錯誤\\n3.教育訓練(加工對刀、程式轉換、雷射、循圓)\\n4.Final Check (主軸異常未驗機)"
 - result: "1.PLC _刀塔模式 條件錯誤。\\n2. 主軸換檔 ZERO檢知錯誤(20rpm，單位換算錯誤變20萬)\\n4.驗機，當天主軸異常，主軸功能未驗 (與鋒哥)"
 - notes: ""
@@ -284,41 +289,25 @@
 {
   "company": "客戶簡稱 (嚴格依照今日筆記提到的公司名稱提取，如：福裕、台秀、銳德、奕達、嵩富、永峻昌)",
   "issues": "問題與異常 (極簡標題，4~10字)",
+  "tasks": "工作內容 (簡短項目概括，4~12字)",
   "problemDesc": "問題描述 (售服問題：包含異常現象、教育訓練、驗機等項目，多項請用 1. 2. 換行條列，忠於原意不灌水)",
-  "result": "處理結果 (售服處理：實際查修動作、重新安裝、修改了什麼PLC/參數/版本，對應問題編號條列)",
+  "result": "處理結果 (售服處理：實際查修原因、修改了什麼PLC/參數/版本，對應問題編號條列，沒寫就留空)",
   "notes": "備註 (若無特別備註請留空字串)",
-  "englishNotice": "將 issues 與 problemDesc (以及簡要處理結果) 準確翻譯為英文，格式為：[English Issues] - [English Details]"
+  "englishNotice": "將 issues 與 problemDesc 準確翻譯為英文，格式為：[English Issues] - [English Problem Description]"
 }`;
 
             try {
-                // ✅ 多模型自動備援機制：避免單一模型 High Demand 塞車導致失敗
-                const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
-                let data = null;
-                let lastError = '';
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n【今日筆記】：\n${textData}` }] }],
+                        generationConfig: { temperature: 0.0, responseMimeType: "application/json" }
+                    })
+                });
 
-                for (const modelName of models) {
-                    try {
-                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n【今日筆記】：\n${textData}` }] }],
-                                generationConfig: { temperature: 0.0, responseMimeType: "application/json" }
-                            })
-                        });
-                        const resJson = await response.json();
-                        if (!resJson.error) {
-                            data = resJson;
-                            break;
-                        }
-                        lastError = resJson.error.message;
-                        console.warn(`${modelName} 忙碌中，切換下一個備援模型...`, lastError);
-                    } catch (e) {
-                        lastError = e.message;
-                    }
-                }
-
-                if (!data) throw new Error(lastError || '目前 AI 伺服器忙碌中，請稍後再試');
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
 
                 const aiResult = JSON.parse(data.candidates[0].content.parts[0].text);
                 const now = new Date();
@@ -328,10 +317,11 @@
                     date: displayDate,
                     company: aiResult.company || '',
                     issues: aiResult.issues || '',
+                    tasks: aiResult.tasks || aiResult.issues || '',
                     problemDesc: aiResult.problemDesc || '',
                     result: aiResult.result || '',
-                    englishNotice: aiResult.englishNotice || '',
                     notes: aiResult.notes || '',
+                    englishNotice: aiResult.englishNotice || '',
                     raw: textData
                 };
 
@@ -360,6 +350,7 @@
                 } else {
                     syncStatus.innerText = '⚠️ 尚未填寫試算表網址，僅存於手機';
                     syncStatus.className = 'text-xs font-bold text-amber-600';
+                    alert('⚠️ 您尚未在上方「⚙️ 設定」填入 Google Sheets Web App 網址，因此目前只儲存在手機中！');
                 }
 
             } catch (err) {
@@ -376,24 +367,24 @@
                    `<div><strong class="text-slate-900">C. 問題與異常：</strong>${d.issues}</div>` +
                    `<div><strong class="text-slate-900">D. 問題描述 (售服問題)：</strong>\n${d.problemDesc}</div>` +
                    `<div><strong class="text-slate-900">E. 處理結果 (售服處理)：</strong>\n${d.result}</div>` +
-                   `<div class="pt-2 border-t border-slate-200 text-slate-600"><strong class="text-blue-700">F. ENGLISH NOTICE：</strong>\n${d.englishNotice || ''}</div>` +
-                   `<div><strong class="text-slate-900">G. 備註：</strong>${d.notes || '(空白)'}</div>`;
+                   `<div><strong class="text-slate-900">F. 備註：</strong>${d.notes || '(空白)'}</div>` +
+                   `<div class="pt-2 border-t border-slate-200 text-slate-600"><strong class="text-blue-700">M. ENGLISH NOTICE：</strong>\n${d.englishNotice || ''}</div>`;
         }
 
         window.copyLastResultTSV = function() {
             if (!lastGeneratedItem) return;
             const d = lastGeneratedItem;
             const quoteCell = (str) => `"${String(str || '').replace(/"/g, '""')}"`;
-            const tsv = [d.date, d.company, d.issues, quoteCell(d.problemDesc), quoteCell(d.result), quoteCell(d.englishNotice), quoteCell(d.notes)].join('\t');
+            const tsv = [d.date, d.company, d.issues, quoteCell(d.problemDesc), quoteCell(d.result), quoteCell(d.notes)].join('\t');
             navigator.clipboard.writeText(tsv).then(() => {
-                alert('📋 已複製 A~G 欄（F 欄為英文通知）！請直接點擊試算表 A 欄空白處按 Ctrl+V 貼上。');
+                alert('📋 已複製 A~F 欄！請直接點擊 NOTICE 試算表 A 欄空白處按 Ctrl+V 貼上。');
             });
         };
 
         window.copyEnglishNotice = function() {
             if (!lastGeneratedItem) return;
             navigator.clipboard.writeText(lastGeneratedItem.englishNotice || '').then(() => {
-                alert('🔤 已複製 ENGLISH NOTICE！');
+                alert('🔤 已複製 ENGLISH NOTICE！可直接貼到 M 欄。');
             });
         };
 
@@ -423,8 +414,8 @@
                 const iss = (item.issues || '').replace(/"/g, '&quot;');
                 const prob = item.problemDesc || '';
                 const res = item.result || '';
-                const eng = item.englishNotice || '';
                 const nts = (item.notes || '').replace(/"/g, '&quot;');
+                const eng = item.englishNotice || '';
 
                 return `
                 <div class="border-b border-slate-200 pb-5 last:border-0" id="item-${item.id}">
@@ -444,8 +435,8 @@
                         <div><label class="block text-xs font-semibold text-slate-500 mb-1">C. 問題與異常</label><input type="text" id="edit-iss-${item.id}" value="${iss}" class="w-full p-2 text-sm border rounded-lg"></div>
                         <div><label class="block text-xs font-semibold text-slate-500 mb-1">D. 問題描述 (售服問題)</label><textarea id="edit-prob-${item.id}" class="w-full p-2 text-sm border rounded-lg h-24">${prob}</textarea></div>
                         <div><label class="block text-xs font-semibold text-slate-500 mb-1">E. 處理結果 (售服處理)</label><textarea id="edit-res-${item.id}" class="w-full p-2 text-sm border rounded-lg h-24">${res}</textarea></div>
-                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">F. ENGLISH NOTICE</label><textarea id="edit-eng-${item.id}" class="w-full p-2 text-sm border rounded-lg h-20">${eng}</textarea></div>
-                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">G. 備註</label><input type="text" id="edit-nts-${item.id}" value="${nts}" class="w-full p-2 text-sm border rounded-lg"></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">F. 備註</label><input type="text" id="edit-nts-${item.id}" value="${nts}" class="w-full p-2 text-sm border rounded-lg"></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">M. ENGLISH NOTICE</label><textarea id="edit-eng-${item.id}" class="w-full p-2 text-sm border rounded-lg h-20">${eng}</textarea></div>
                         <div class="flex gap-2 justify-end pt-2">
                             <button onclick="exitEditMode('${item.id}')" class="text-xs px-3 py-2 bg-slate-200 text-slate-600 rounded-lg font-bold">取消</button>
                             <button onclick="saveAndSyncUpdate('${item.id}')" class="text-xs px-3 py-2 bg-emerald-600 text-white rounded-lg font-bold">💾 儲存並同步雲端</button>
@@ -468,10 +459,11 @@
                 ...currentItem,
                 company: document.getElementById(`edit-comp-${id}`).value.trim(),
                 issues: document.getElementById(`edit-iss-${id}`).value.trim(),
+                tasks: document.getElementById(`edit-iss-${id}`).value.trim(),
                 problemDesc: document.getElementById(`edit-prob-${id}`).value.trim(),
                 result: document.getElementById(`edit-res-${id}`).value.trim(),
-                englishNotice: document.getElementById(`edit-eng-${id}`).value.trim(),
-                notes: document.getElementById(`edit-nts-${id}`).value.trim()
+                notes: document.getElementById(`edit-nts-${id}`).value.trim(),
+                englishNotice: document.getElementById(`edit-eng-${id}`).value.trim()
             };
 
             history = history.map(item => item.id === id ? { ...updated, report: renderReportHtml(updated) } : item);
