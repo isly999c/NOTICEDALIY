@@ -23,7 +23,7 @@
     </nav>
 
     <div class="max-w-2xl mx-auto p-4 pb-24">
-        
+
         <!-- 頁面 1：寫日誌 -->
         <div id="page-write" class="page active">
             <!-- 設定區 -->
@@ -39,8 +39,8 @@
                             <input type="password" id="apiKey" placeholder="輸入 Gemini API Key..." class="w-full p-2.5 border border-slate-300 rounded-lg bg-slate-50 text-sm">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold mb-1 text-slate-500">2. Google Sheets Web App 網址 (選填)</label>
-                            <input type="password" id="sheetUrl" placeholder="貼上 Google Apps Script 網址..." class="w-full p-2.5 border border-slate-300 rounded-lg bg-slate-50 text-sm">
+                            <label class="block text-xs font-semibold mb-1 text-slate-500">2. Google Sheets Web App 網址 (必填才能自動連線)</label>
+                            <input type="password" id="sheetUrl" placeholder="貼上 https://script.google.com/.../exec" class="w-full p-2.5 border border-slate-300 rounded-lg bg-slate-50 text-sm">
                         </div>
                     </div>
                 </details>
@@ -65,32 +65,32 @@
                         <button onclick="insertTag('與H.Q/Raul討論後 ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">🌍 H.Q/Raul</button>
                     </div>
                 </div>
-                
+
                 <textarea id="logInput" placeholder="直接用講的或打字，不用管排版，AI 只會幫你分欄跟標號 1. 2. 3.，不會亂加廢話！&#10;&#10;範例：今天去奕達驗機，1是刀塔手動換刀正常但MDI跟自動換刀異常，查出來是PLC刀塔模式條件錯誤。2是主軸換檔異常零速檢知錯誤，因為20rpm單位換算錯變成20萬。3是教育訓練對刀跟雷射。" class="w-full h-44 p-3.5 border border-slate-300 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-500 text-base leading-relaxed resize-none"></textarea>
-                
+
                 <div class="flex justify-between items-center text-xs text-slate-500 mt-2 mb-4">
                     <span id="charCount">字數: 0</span>
                     <button onclick="clearDraft()" class="text-red-500 hover:text-red-700 font-medium px-2 py-1">🗑️ 清空草稿</button>
                 </div>
-                
+
                 <div class="grid grid-cols-1 gap-3">
                     <button id="micBtn" class="w-full p-4 rounded-xl font-bold bg-slate-800 text-white hover:bg-slate-700 flex justify-center items-center gap-2 shadow-sm">
                         🎤 按一下開始語音輸入
                     </button>
-                    
+
                     <button id="submitBtn" class="w-full p-4 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 flex justify-center items-center gap-2 shadow-sm">
-                        ✨ 整理成 NOTICE 表格格式 (含英文翻譯)
+                        ✨ 整理成 NOTICE 表格格式並寫入 Google 試算表
                     </button>
                 </div>
-                
+
                 <div id="loading" class="hidden text-center mt-5 p-4 bg-blue-50 text-blue-700 rounded-xl font-bold text-sm animate-pulse">
-                    🧠 正在精準分欄並翻譯 ENGLISH NOTICE（不加贅字）...
+                    🧠 正在精準分欄、翻譯 ENGLISH NOTICE 並同步至 Google 試算表...
                 </div>
 
                 <!-- 產出預覽區 -->
                 <div id="resultBox" class="hidden mt-5">
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
-                        <span class="text-xs font-bold text-emerald-600">✅ 整理完成 (對齊 NOTICE 試算表 A~F 欄)</span>
+                        <span id="syncStatusText" class="text-xs font-bold text-emerald-600">✅ 整理完成 (已同步寫入 Google 試算表)</span>
                         <div class="flex gap-2">
                             <button onclick="copyLastResultTSV()" class="text-xs px-3 py-1.5 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700">
                                 📋 複製 A~F 欄 (貼上試算表)
@@ -108,7 +108,7 @@
         <!-- 頁面 2：歷史紀錄 -->
         <div id="page-history" class="page">
             <div class="bg-white p-5 rounded-2xl shadow-sm">
-                <h2 class="text-lg font-bold text-slate-900 mb-4">手機歷史紀錄 (可隨時修改)</h2>
+                <h2 class="text-lg font-bold text-slate-900 mb-4">手機歷史紀錄 (可隨時修改並同步覆蓋試算表)</h2>
                 <div id="historyContainer" class="space-y-6"></div>
             </div>
         </div>
@@ -135,8 +135,8 @@
                 badge.innerText = '已綁定 API + 試算表';
                 badge.className = 'text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold';
             } else if (hasKey) {
-                badge.innerText = '已設 API';
-                badge.className = 'text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-bold';
+                badge.innerText = '已設 API (未填試算表網址)';
+                badge.className = 'text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-bold';
             } else {
                 badge.innerText = '請先設定 API Key';
                 badge.className = 'text-xs px-2 py-0.5 rounded bg-red-100 text-red-600 font-bold';
@@ -152,7 +152,7 @@
             localStorage.setItem('flashlog_sheet_url', e.target.value);
             updateConfigBadge();
         });
-        
+
         let saveTimeout;
         document.getElementById('logInput').addEventListener('input', (e) => {
             updateCharCount();
@@ -190,11 +190,31 @@
             micBtn.addEventListener('click', () => micBtn.classList.contains('recording') ? recognition.stop() : recognition.start());
         } else { micBtn.style.display = 'none'; }
 
+        // ✅ 核心函式：將這版的 A~F 欄自動對應到您 Google Sheet 現有的 doPost 參數，免改後端！
+        async function postToGoogleSheet(sheetUrl, itemData) {
+            const payloadForGAS = {
+                date: itemData.date,               // 對應試算表 A 欄 (含時分秒，防止同一天不同公司互相覆蓋)
+                company: itemData.company,         // 對應試算表 B 欄 (公司/服務單位)
+                issues: itemData.issues,           // 對應試算表 C 欄 (問題與異常)
+                tasks: itemData.problemDesc,       // 對應試算表 D 欄 (問題描述 - 售服問題)
+                problemDesc: itemData.result,      // 對應試算表 E 欄 (處理結果 - 售服處理)
+                result: itemData.notes,            // 對應試算表 F 欄 (備註)
+                raw: itemData.englishNotice || itemData.raw || '' // 對應試算表 G 欄
+            };
+
+            await fetch(sheetUrl, {
+                method: 'POST',
+                mode: 'no-cors', // 必加：解決瀏覽器 CORS 阻擋 Google Apps Script 重導向問題
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payloadForGAS)
+            });
+        }
+
         document.getElementById('submitBtn').addEventListener('click', async () => {
             const apiKey = document.getElementById('apiKey').value.trim();
             const sheetUrl = document.getElementById('sheetUrl').value.trim();
             const textData = document.getElementById('logInput').value.trim();
-            
+
             if (!apiKey) return alert('請先輸入 Gemini API Key！');
             if (!textData) return alert('請輸入工作紀錄！');
 
@@ -205,7 +225,7 @@
             // 嚴格對齊使用者 NOTICE 試算表風格的 Few-Shot Prompt (零腦補)
             const systemPrompt = `你是一個專門整理 CNC 工具機售服紀錄的分欄助手。
 【最高原則：絕對禁止腦補、禁止擴寫、禁止官腔廢話！】
-使用者討厭 AI 天馬行空亂寫。你只能根據使用者提供的文字進行「欄位分類、錯字修正、標上 1. 2. 3. 條列編號」，使用者沒提到的檢查動作或原因，一個字都不准自己加！保留原本的中英夾雜術語（如 PLC, SUB, MDI, DRVIE, Watch Dog PE,LOOPTIME, CPUTIME, Final Check, H.Q, Raul, 鋒哥 等）。
+使用者討厭 AI 天馬行空亂寫。你只能根據使用者提供的文字進行「欄位分類、錯字修正、標上 1. 2. 3. 條列編號」，使用者沒提到的檢查動作或原因，一個字都不准自己加！保留原本的中英夾雜術語（如 PLC, SUB, MDI, DRVIE, Watch Dog PE, LOOPTIME, CPUTIME, Final Check, H.Q, Raul, 鋒哥 等）。
 
 請參考使用者真實試算表 (NOTICE) 的紀錄風格範例：
 【範例 1】
@@ -226,7 +246,7 @@
 
 請將以下【今日筆記】轉換為上述 JSON 格式輸出：
 {
-  "company": "客戶簡稱 (例如：台秀、銳德、奕達、嵩富、PARKER)",
+  "company": "客戶簡稱 (嚴格依照今日筆記提到的公司名稱提取，如：福裕、台秀、銳德、奕達、嵩富、永峻昌)",
   "issues": "問題與異常 (極簡標題，4~10字)",
   "problemDesc": "問題描述 (售服問題：包含異常現象、教育訓練、驗機等項目，多項請用 1. 2. 換行條列，忠於原意不灌水)",
   "result": "處理結果 (售服處理：實際查修原因、修改了什麼PLC/參數/版本，對應問題編號條列，沒寫就留空)",
@@ -243,14 +263,14 @@
                         generationConfig: { temperature: 0.0, responseMimeType: "application/json" }
                     })
                 });
-                
+
                 const data = await response.json();
                 if (data.error) throw new Error(data.error.message);
-                
+
                 const aiResult = JSON.parse(data.candidates[0].content.parts[0].text);
                 const now = new Date();
-                // 依照 NOTICE 試算表習慣：只記 YYYY/M/D，不加時間
-                const displayDate = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()}`;
+                // 加上時分秒，確保後端 doPost 的 getTime() 毫秒數獨一無二，不會把「福裕」蓋掉之前的「永峻昌」！
+                const displayDate = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
 
                 const sheetData = {
                     date: displayDate,
@@ -265,14 +285,20 @@
 
                 lastGeneratedItem = sheetData;
 
+                const syncStatus = document.getElementById('syncStatusText');
                 if (sheetUrl) {
                     try {
-                        await fetch(sheetUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                            body: JSON.stringify(sheetData)
-                        });
-                    } catch(e) { console.error('試算表同步失敗:', e); }
+                        await postToGoogleSheet(sheetUrl, sheetData);
+                        syncStatus.innerText = '✅ 整理完成並已寫入 Google 試算表！';
+                        syncStatus.className = 'text-xs font-bold text-emerald-600';
+                    } catch(e) {
+                        console.error('試算表同步失敗:', e);
+                        syncStatus.innerText = '⚠️ 整理完成，但連線試算表失敗';
+                        syncStatus.className = 'text-xs font-bold text-red-600';
+                    }
+                } else {
+                    syncStatus.innerText = '✅ 整理完成 (尚未填寫試算表網址，僅存於手機)';
+                    syncStatus.className = 'text-xs font-bold text-amber-600';
                 }
 
                 const reportHtml = renderReportHtml(sheetData);
@@ -280,6 +306,11 @@
                 document.getElementById('resultBox').classList.remove('hidden');
 
                 saveToLocal(sheetData, reportHtml);
+                setTimeout(() => {
+                    if (confirm('✅ 已成功寫入 Google 試算表！是否清空草稿？')) {
+                        clearDraft();
+                    }
+                }, 400);
 
             } catch (err) {
                 alert('錯誤: ' + err.message);
@@ -337,7 +368,7 @@
             let records = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
             document.getElementById('recordCount').innerText = records.length;
             if (records.length === 0) return container.innerHTML = '<div class="text-center text-slate-400 py-8">尚無歷史紀錄</div>';
-            
+
             container.innerHTML = records.map(item => {
                 const comp = (item.company || '').replace(/"/g, '&quot;');
                 const iss = (item.issues || '').replace(/"/g, '&quot;');
@@ -358,7 +389,7 @@
                         </div>
                         <div class="text-sm text-slate-600 bg-slate-50 p-3.5 rounded-xl space-y-2 whitespace-pre-wrap leading-relaxed">${renderReportHtml(item)}</div>
                     </div>
-                    
+
                     <div id="edit-${item.id}" class="hidden bg-amber-50/60 p-4 rounded-xl border border-amber-200 space-y-3 mt-2">
                         <div><label class="block text-xs font-semibold text-slate-500 mb-1">B. 公司/服務單位</label><input type="text" id="edit-comp-${item.id}" value="${comp}" class="w-full p-2 text-sm border rounded-lg"></div>
                         <div><label class="block text-xs font-semibold text-slate-500 mb-1">C. 問題與異常</label><input type="text" id="edit-iss-${item.id}" value="${iss}" class="w-full p-2 text-sm border rounded-lg"></div>
@@ -368,7 +399,7 @@
                         <div><label class="block text-xs font-semibold text-slate-500 mb-1">M. ENGLISH NOTICE</label><textarea id="edit-eng-${item.id}" class="w-full p-2 text-sm border rounded-lg h-20">${eng}</textarea></div>
                         <div class="flex gap-2 justify-end pt-2">
                             <button onclick="exitEditMode('${item.id}')" class="text-xs px-3 py-2 bg-slate-200 text-slate-600 rounded-lg font-bold">取消</button>
-                            <button onclick="saveAndSyncUpdate('${item.id}')" class="text-xs px-3 py-2 bg-emerald-600 text-white rounded-lg font-bold">💾 儲存更新</button>
+                            <button onclick="saveAndSyncUpdate('${item.id}')" class="text-xs px-3 py-2 bg-emerald-600 text-white rounded-lg font-bold">💾 儲存並同步雲端</button>
                         </div>
                     </div>
                 </div>`;
@@ -378,11 +409,13 @@
         window.enterEditMode = (id) => { document.getElementById(`view-${id}`).classList.add('hidden'); document.getElementById(`edit-${id}`).classList.remove('hidden'); };
         window.exitEditMode = (id) => { document.getElementById(`view-${id}`).classList.remove('hidden'); document.getElementById(`edit-${id}`).classList.add('hidden'); };
 
+        // ✅ 歷史紀錄修正後，自動根據原時間戳記同步回 Google 試算表覆蓋該列！
         window.saveAndSyncUpdate = async function(id) {
             let history = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
             let currentItem = history.find(item => item.id === id);
             if (!currentItem) return;
 
+            const sheetUrl = document.getElementById('sheetUrl').value.trim();
             const updated = {
                 ...currentItem,
                 company: document.getElementById(`edit-comp-${id}`).value.trim(),
@@ -395,6 +428,17 @@
 
             history = history.map(item => item.id === id ? { ...updated, report: renderReportHtml(updated) } : item);
             localStorage.setItem('flashlog_history', JSON.stringify(history));
+
+            if (sheetUrl) {
+                try {
+                    await postToGoogleSheet(sheetUrl, updated);
+                    alert('✅ 手機與 Google 試算表皆已同步更新！');
+                } catch(e) {
+                    alert('⚠️ 手機已更新，但連線 Google 試算表失敗。');
+                }
+            } else {
+                alert('✅ 手機紀錄已更新！');
+            }
             loadHistory();
         };
 
