@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>閃記日誌 FlashLog v2.7</title>
+    <title>閃記日誌 FlashLog v2.8</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,7 +18,7 @@
 <body class="text-slate-700">
 
     <nav class="flex justify-center gap-3 bg-slate-900 p-3.5 text-white sticky top-0 z-50 shadow-md">
-        <button id="nav-write" class="px-5 py-2 rounded-full text-sm font-bold bg-blue-600 transition-colors" onclick="switchPage('write')">📝 快速記日誌 (v2.7)</button>
+        <button id="nav-write" class="px-5 py-2 rounded-full text-sm font-bold bg-blue-600 transition-colors" onclick="switchPage('write')">📝 快速記日誌 (v2.8)</button>
         <button id="nav-history" class="px-5 py-2 rounded-full text-sm font-bold hover:bg-slate-700 transition-colors" onclick="switchPage('history')">📂 歷史紀錄 (<span id="recordCount">0</span>)</button>
     </nav>
 
@@ -52,7 +52,7 @@
             <!-- 輸入區 -->
             <div class="bg-white p-5 rounded-2xl shadow-sm">
                 <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-lg font-bold text-slate-900">今日現場隨手記 (v2.7 語音秒開版)</h2>
+                    <h2 class="text-lg font-bold text-slate-900">今日現場隨手記 (v2.8 穩定版)</h2>
                     <span id="saveStatus" class="text-xs px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg font-medium">自動儲存草稿</span>
                 </div>
 
@@ -69,10 +69,10 @@
                     </div>
                 </div>
 
-                <textarea id="logInput" placeholder="直接按下方語音按鈕說話（邊講會邊浮現文字），或點此處開啟手機鍵盤按鍵盤上的「🎤」說話！" class="w-full h-44 p-3.5 border border-slate-300 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-500 text-base leading-relaxed resize-none"></textarea>
+                <textarea id="logInput" placeholder="直接按下方語音按鈕說話（可無限次分段錄音），或點此處用手機鍵盤輸入..." class="w-full h-44 p-3.5 border border-slate-300 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-500 text-base leading-relaxed resize-none"></textarea>
 
                 <!-- 即時語音收音狀態提示列 -->
-                <div id="speechStatus" class="hidden mt-2 p-2.5 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-bold transition-all"></div>
+                <div id="speechStatus" class="hidden mt-2 p-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs font-bold transition-all"></div>
 
                 <div class="flex justify-between items-center text-xs text-slate-500 mt-2 mb-4">
                     <span id="charCount">字數: 0</span>
@@ -80,9 +80,8 @@
                 </div>
 
                 <div class="grid grid-cols-1 gap-3">
-                    <!-- 直接綁定 onclick="toggleMic()" 確保點擊 100% 有反應且立刻變色 -->
-                    <button type="button" id="micBtn" onclick="toggleMic()" class="w-full p-4 rounded-xl font-bold bg-slate-800 text-white active:scale-95 flex justify-center items-center gap-2 shadow-sm transition-all cursor-pointer select-none">
-                        🎤 按一下開始語音輸入 (邊講邊出字)
+                    <button type="button" id="micBtn" class="w-full p-4 rounded-xl font-bold bg-slate-800 text-white active:scale-95 flex justify-center items-center gap-2 shadow-sm transition-all cursor-pointer select-none">
+                        🎤 按一下開始語音輸入 (可重複多次點擊)
                     </button>
 
                     <button type="button" id="submitBtn" onclick="submitLog()" class="w-full p-4 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 active:scale-95 flex justify-center items-center gap-2 shadow-sm transition-all cursor-pointer">
@@ -124,9 +123,6 @@
 
     <script>
         let lastGeneratedItem = null;
-        let recognition = null;
-        let isListening = false;
-        let baseText = '';
 
         function toText(val) {
             if (Array.isArray(val)) return val.map(v => String(v ?? '')).join('\n');
@@ -163,6 +159,7 @@
             updateConfigBadge();
             updateCharCount();
             loadHistory();
+            initSpeechEngine();
         };
 
         function updateConfigBadge() {
@@ -218,113 +215,90 @@
             input.dispatchEvent(new Event('input'));
         };
 
-        // ✅ v2.7 強制喚醒語音函式：一按立刻變色，每次點擊建立全新連線，絕不卡死
-        window.toggleMic = function() {
+        // ✅ v2.8 單一實例穩定語音架構：不重複 new 物件、不跑無限重啟迴圈，第 1 次到第 100 次按都一樣穩定！
+        let recognition = null;
+        let isRecording = false;
+        let snapshotBeforeSpeech = '';
+
+        function initSpeechEngine() {
             const micBtn = document.getElementById('micBtn');
             const speechStatus = document.getElementById('speechStatus');
             const input = document.getElementById('logInput');
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-            // 如果瀏覽器不支援 Web Speech API，直接幫使用者聚焦輸入框喚醒手機鍵盤麥克風
             if (!SpeechRecognition) {
+                micBtn.innerText = '⌨️ 點擊輸入框，使用手機鍵盤「🎤」語音輸入';
+                micBtn.onclick = () => input.focus();
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'zh-TW';
+            recognition.continuous = false;    // 單次完整收音，講完一段自動結束釋放麥克風，下次按絕對不卡死！
+            recognition.interimResults = true; // 邊講邊即時顯示文字
+
+            recognition.onstart = () => {
+                isRecording = true;
+                const now = new Date();
+                const timeStr = `[${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}] `;
+                const currentVal = input.value.trim();
+                snapshotBeforeSpeech = (currentVal ? currentVal + '\n' : '') + timeStr;
+
+                micBtn.classList.add('recording');
+                micBtn.innerText = '🛑 聆聽中... (說完會自動停，或點擊結束)';
                 speechStatus.classList.remove('hidden');
-                speechStatus.innerText = '💡 此瀏覽器不支援網頁直接收音，已為您開啟輸入框，請直接按手機鍵盤上的「🎤」說話！';
-                input.focus();
-                return;
-            }
+                speechStatus.innerText = '🎙️ 請開始說話，文字會即時寫入上方輸入框...';
+            };
 
-            // 如果正在收音中 -> 立即停止並恢復按鈕顏色
-            if (isListening) {
-                isListening = false;
-                try { if (recognition) recognition.stop(); } catch (e) {}
-                micBtn.classList.remove('recording');
-                micBtn.innerText = '🎤 按一下開始語音輸入 (邊講邊出字)';
-                speechStatus.innerText = '✅ 已結束收音！';
-                setTimeout(() => speechStatus.classList.add('hidden'), 2000);
-                return;
-            }
-
-            // 1. 點擊瞬間「立刻變紅色」，讓使用者馬上看到視覺回饋！
-            isListening = true;
-            micBtn.classList.add('recording');
-            micBtn.innerText = '🛑 正在收音中... (講完點擊結束)';
-            speechStatus.classList.remove('hidden');
-            speechStatus.innerText = '🎙️ 麥克風已啟動，請開始說話...';
-
-            const now = new Date();
-            const timePrefix = `[${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}] `;
-            baseText = (input.value ? input.value + '\n' : '') + timePrefix;
-
-            // 2. 每次點擊都建立全新的 SpeechRecognition 實例，避免舊實例卡死沒反應
-            try {
-                if (recognition) {
-                    try { recognition.abort(); } catch (e) {}
+            recognition.onresult = (e) => {
+                let transcript = '';
+                for (let i = 0; i < e.results.length; i++) {
+                    transcript += e.results[i][0].transcript;
                 }
-                recognition = new SpeechRecognition();
-                recognition.lang = 'zh-TW';
-                recognition.continuous = false;     // 手機端設為 false 最穩定，講完一句我們在 onend 自動無縫重啟！
-                recognition.interimResults = true;  // 邊講邊出字
-
-                recognition.onresult = (e) => {
-                    let currentTranscript = '';
-                    let isFinalResult = false;
-
-                    for (let i = e.resultIndex; i < e.results.length; i++) {
-                        currentTranscript += e.results[i][0].transcript;
-                        if (e.results[i].isFinal) isFinalResult = true;
-                    }
-
-                    input.value = baseText + currentTranscript;
+                if (transcript) {
+                    input.value = snapshotBeforeSpeech + transcript;
                     input.scrollTop = input.scrollHeight;
                     input.dispatchEvent(new Event('input'));
+                    speechStatus.innerText = `👂 辨識中：${transcript}`;
+                }
+            };
 
-                    if (isFinalResult) {
-                        baseText = input.value + ' ';
-                        speechStatus.innerText = `✅ 已寫入：「${currentTranscript}」，請繼續說或點紅色按鈕結束...`;
-                    } else {
-                        speechStatus.innerText = `👂 聽取中：${currentTranscript}`;
-                    }
-                };
-
-                recognition.onerror = (e) => {
-                    if (e.error === 'no-speech') {
-                        speechStatus.innerText = '⚠️ 沒聽到聲音，請靠近麥克風繼續說...';
-                    } else if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-                        isListening = false;
-                        micBtn.classList.remove('recording');
-                        micBtn.innerText = '🎤 按一下開始語音輸入 (邊講邊出字)';
-                        speechStatus.innerText = '❌ 麥克風權限被拒！請點網址列左方鎖頭允許麥克風，或直接點輸入框用手機鍵盤「🎤」說話。';
-                        input.focus();
-                    } else {
-                        speechStatus.innerText = `⚠️ 語音狀態 (${e.error})，若無法收音請點輸入框用鍵盤「🎤」說話。`;
-                    }
-                };
-
-                recognition.onend = () => {
-                    // 如果使用者還沒按停止，自動無縫接續聽下一句！
-                    if (isListening) {
-                        try {
-                            recognition.start();
-                        } catch (err) {
-                            isListening = false;
-                            micBtn.classList.remove('recording');
-                            micBtn.innerText = '🎤 按一下開始語音輸入 (邊講邊出字)';
-                        }
-                    } else {
-                        micBtn.classList.remove('recording');
-                        micBtn.innerText = '🎤 按一下開始語音輸入 (邊講邊出字)';
-                    }
-                };
-
-                recognition.start();
-            } catch (err) {
-                isListening = false;
+            recognition.onerror = (e) => {
+                isRecording = false;
                 micBtn.classList.remove('recording');
-                micBtn.innerText = '🎤 按一下開始語音輸入 (邊講邊出字)';
-                speechStatus.innerText = '❌ 啟動失敗：' + err.message + '（請直接點輸入框用手機鍵盤🎤）';
-                input.focus();
-            }
-        };
+                micBtn.innerText = '🎤 按一下開始語音輸入 (可重複多次點擊)';
+                if (e.error === 'no-speech') {
+                    speechStatus.innerText = '⚠️ 剛才沒有聽到聲音，請再按一下按鈕重新說話。';
+                } else if (e.error === 'not-allowed') {
+                    speechStatus.innerText = '❌ 麥克風權限被拒！請允許權限，或點輸入框用手機鍵盤「🎤」說話。';
+                } else if (e.error !== 'aborted') {
+                    speechStatus.innerText = `⚠️ 語音訊號中斷 (${e.error})，請再按一下語音按鈕即可繼續。`;
+                }
+            };
+
+            recognition.onend = () => {
+                isRecording = false;
+                micBtn.classList.remove('recording');
+                micBtn.innerText = '🎤 按一下開始語音輸入 (可重複多次點擊)';
+                speechStatus.innerText = '✅ 這段語音已寫入！還要補充請再按一下語音按鈕。';
+            };
+
+            micBtn.onclick = () => {
+                if (isRecording) {
+                    recognition.stop();
+                } else {
+                    try {
+                        recognition.start();
+                    } catch (err) {
+                        // 萬一底層狀態還沒釋放，先強制 abort 再重新啟動
+                        try { recognition.abort(); } catch (e) {}
+                        setTimeout(() => {
+                            try { recognition.start(); } catch (e2) {}
+                        }, 150);
+                    }
+                }
+            };
+        }
 
         async function postToGoogleSheet(sheetUrl, itemData) {
             if (!sheetUrl.includes('script.google.com')) {
@@ -385,8 +359,9 @@
         };
 
         window.submitLog = async function() {
-            // 若還在錄音中，先自動停止錄音
-            if (isListening) window.toggleMic();
+            if (isRecording && recognition) {
+                try { recognition.stop(); } catch (e) {}
+            }
 
             const apiKey = document.getElementById('apiKey').value.trim();
             const sheetUrl = document.getElementById('sheetUrl').value.trim();
@@ -624,6 +599,7 @@
             localStorage.setItem('flashlog_draft', '');
             updateCharCount();
             document.getElementById('resultBox').classList.add('hidden');
+            document.getElementById('speechStatus').classList.add('hidden');
         };
         window.updateCharCount = function() {
             document.getElementById('charCount').innerText = `字數: ${document.getElementById('logInput').value.length}`;
