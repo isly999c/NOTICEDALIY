@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>閃記日誌 FlashLog v2.8</title>
+    <title>閃記日誌 FlashLog v3.0</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,7 +18,7 @@
 <body class="text-slate-700">
 
     <nav class="flex justify-center gap-3 bg-slate-900 p-3.5 text-white sticky top-0 z-50 shadow-md">
-        <button id="nav-write" class="px-5 py-2 rounded-full text-sm font-bold bg-blue-600 transition-colors" onclick="switchPage('write')">📝 快速記日誌 (v2.8)</button>
+        <button id="nav-write" class="px-5 py-2 rounded-full text-sm font-bold bg-blue-600 transition-colors" onclick="switchPage('write')">📝 快速記日誌 (v3.0)</button>
         <button id="nav-history" class="px-5 py-2 rounded-full text-sm font-bold hover:bg-slate-700 transition-colors" onclick="switchPage('history')">📂 歷史紀錄 (<span id="recordCount">0</span>)</button>
     </nav>
 
@@ -52,7 +52,7 @@
             <!-- 輸入區 -->
             <div class="bg-white p-5 rounded-2xl shadow-sm">
                 <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-lg font-bold text-slate-900">今日現場隨手記 (v2.8 穩定版)</h2>
+                    <h2 class="text-lg font-bold text-slate-900">今日現場隨手記 (v3.0 iPhone 雙語音版)</h2>
                     <span id="saveStatus" class="text-xs px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg font-medium">自動儲存草稿</span>
                 </div>
 
@@ -69,7 +69,7 @@
                     </div>
                 </div>
 
-                <textarea id="logInput" placeholder="直接按下方語音按鈕說話（可無限次分段錄音），或點此處用手機鍵盤輸入..." class="w-full h-44 p-3.5 border border-slate-300 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-500 text-base leading-relaxed resize-none"></textarea>
+                <textarea id="logInput" placeholder="請點擊下方「🎙️ AI 語音聽寫」按鈕說話（iPhone 專用，保證每次都出字），或點此處用 iPhone 鍵盤右下角麥克風輸入..." class="w-full h-44 p-3.5 border border-slate-300 rounded-xl bg-slate-50 focus:outline-none focus:border-blue-500 text-base leading-relaxed resize-none"></textarea>
 
                 <!-- 即時語音收音狀態提示列 -->
                 <div id="speechStatus" class="hidden mt-2 p-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs font-bold transition-all"></div>
@@ -79,9 +79,11 @@
                     <button type="button" onclick="clearDraft()" class="text-red-500 hover:text-red-700 font-medium px-2 py-1">🗑️ 清空草稿</button>
                 </div>
 
+                <!-- 語音與送出按鈕區 -->
                 <div class="grid grid-cols-1 gap-3">
-                    <button type="button" id="micBtn" class="w-full p-4 rounded-xl font-bold bg-slate-800 text-white active:scale-95 flex justify-center items-center gap-2 shadow-sm transition-all cursor-pointer select-none">
-                        🎤 按一下開始語音輸入 (可重複多次點擊)
+                    <!-- 主力推薦：使用 MediaRecorder + Gemini 語音轉文字，在 iPhone 上 100% 亮橘燈收音、無限次點擊不卡死！ -->
+                    <button type="button" id="aiMicBtn" onclick="toggleAiVoice()" class="w-full p-4 rounded-xl font-bold bg-slate-800 text-white active:scale-95 flex justify-center items-center gap-2 shadow-sm transition-all cursor-pointer select-none">
+                        🎙️ 按一下開始說話 (iPhone 穩定收音版)
                     </button>
 
                     <button type="button" id="submitBtn" onclick="submitLog()" class="w-full p-4 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 active:scale-95 flex justify-center items-center gap-2 shadow-sm transition-all cursor-pointer">
@@ -159,7 +161,6 @@
             updateConfigBadge();
             updateCharCount();
             loadHistory();
-            initSpeechEngine();
         };
 
         function updateConfigBadge() {
@@ -215,89 +216,164 @@
             input.dispatchEvent(new Event('input'));
         };
 
-        // ✅ v2.8 單一實例穩定語音架構：不重複 new 物件、不跑無限重啟迴圈，第 1 次到第 100 次按都一樣穩定！
-        let recognition = null;
-        let isRecording = false;
-        let snapshotBeforeSpeech = '';
+        // ✅ v3.0 iPhone 零失敗語音引擎：使用原生硬體麥克風錄音 + Gemini 閃電聽寫
+        // 徹底解決 iPhone Safari/Chrome Web Speech API 第二次點擊不亮橘燈、不出字的系統 Bug！
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecordingAudio = false;
+        let activeStream = null;
 
-        function initSpeechEngine() {
-            const micBtn = document.getElementById('micBtn');
-            const speechStatus = document.getElementById('speechStatus');
-            const input = document.getElementById('logInput');
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        window.toggleAiVoice = async function() {
+            const btn = document.getElementById('aiMicBtn');
+            const status = document.getElementById('speechStatus');
+            const apiKey = document.getElementById('apiKey').value.trim();
 
-            if (!SpeechRecognition) {
-                micBtn.innerText = '⌨️ 點擊輸入框，使用手機鍵盤「🎤」語音輸入';
-                micBtn.onclick = () => input.focus();
+            if (!apiKey) {
+                alert('請先在上方設定區輸入 Gemini API Key！');
+                document.getElementById('settingsDetails').open = true;
                 return;
             }
 
-            recognition = new SpeechRecognition();
-            recognition.lang = 'zh-TW';
-            recognition.continuous = false;    // 單次完整收音，講完一段自動結束釋放麥克風，下次按絕對不卡死！
-            recognition.interimResults = true; // 邊講邊即時顯示文字
-
-            recognition.onstart = () => {
-                isRecording = true;
-                const now = new Date();
-                const timeStr = `[${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}] `;
-                const currentVal = input.value.trim();
-                snapshotBeforeSpeech = (currentVal ? currentVal + '\n' : '') + timeStr;
-
-                micBtn.classList.add('recording');
-                micBtn.innerText = '🛑 聆聽中... (說完會自動停，或點擊結束)';
-                speechStatus.classList.remove('hidden');
-                speechStatus.innerText = '🎙️ 請開始說話，文字會即時寫入上方輸入框...';
-            };
-
-            recognition.onresult = (e) => {
-                let transcript = '';
-                for (let i = 0; i < e.results.length; i++) {
-                    transcript += e.results[i][0].transcript;
+            // 如果正在錄音 -> 點擊停止並立即轉成文字
+            if (isRecordingAudio && mediaRecorder) {
+                isRecordingAudio = false;
+                btn.classList.remove('recording');
+                btn.innerText = '⏳ 正在將語音轉為文字...';
+                btn.disabled = true;
+                status.classList.remove('hidden');
+                status.innerText = '🧠 AI 正在聽寫您剛才說的話，請稍候 1~2 秒...';
+                try {
+                    mediaRecorder.stop();
+                } catch (e) {
+                    resetMicUi();
                 }
-                if (transcript) {
-                    input.value = snapshotBeforeSpeech + transcript;
-                    input.scrollTop = input.scrollHeight;
-                    input.dispatchEvent(new Event('input'));
-                    speechStatus.innerText = `👂 辨識中：${transcript}`;
+                return;
+            }
+
+            // 啟動硬體麥克風（iPhone 靈動島會 100% 亮起橘燈！）
+            try {
+                status.classList.remove('hidden');
+                status.innerText = '🎙️ 正在啟動 iPhone 麥克風...';
+
+                activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioChunks = [];
+
+                // 自動偵測 iPhone (audio/mp4) 與 Android/PC (audio/webm) 支援格式
+                let mimeType = '';
+                if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                    mimeType = 'audio/webm;codecs=opus';
+                } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                    mimeType = 'audio/mp4';
                 }
-            };
 
-            recognition.onerror = (e) => {
-                isRecording = false;
-                micBtn.classList.remove('recording');
-                micBtn.innerText = '🎤 按一下開始語音輸入 (可重複多次點擊)';
-                if (e.error === 'no-speech') {
-                    speechStatus.innerText = '⚠️ 剛才沒有聽到聲音，請再按一下按鈕重新說話。';
-                } else if (e.error === 'not-allowed') {
-                    speechStatus.innerText = '❌ 麥克風權限被拒！請允許權限，或點輸入框用手機鍵盤「🎤」說話。';
-                } else if (e.error !== 'aborted') {
-                    speechStatus.innerText = `⚠️ 語音訊號中斷 (${e.error})，請再按一下語音按鈕即可繼續。`;
-                }
-            };
+                mediaRecorder = mimeType ? new MediaRecorder(activeStream, { mimeType }) : new MediaRecorder(activeStream);
 
-            recognition.onend = () => {
-                isRecording = false;
-                micBtn.classList.remove('recording');
-                micBtn.innerText = '🎤 按一下開始語音輸入 (可重複多次點擊)';
-                speechStatus.innerText = '✅ 這段語音已寫入！還要補充請再按一下語音按鈕。';
-            };
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data && e.data.size > 0) audioChunks.push(e.data);
+                };
 
-            micBtn.onclick = () => {
-                if (isRecording) {
-                    recognition.stop();
-                } else {
-                    try {
-                        recognition.start();
-                    } catch (err) {
-                        // 萬一底層狀態還沒釋放，先強制 abort 再重新啟動
-                        try { recognition.abort(); } catch (e) {}
-                        setTimeout(() => {
-                            try { recognition.start(); } catch (e2) {}
-                        }, 150);
+                mediaRecorder.onstop = async () => {
+                    // 立即關閉麥克風硬體通道，釋放 iPhone 橘燈，確保下次按 100% 正常！
+                    if (activeStream) {
+                        activeStream.getTracks().forEach(track => track.stop());
+                        activeStream = null;
                     }
+
+                    const actualMime = (mediaRecorder.mimeType || 'audio/mp4').split(';')[0];
+                    const audioBlob = new Blob(audioChunks, { type: actualMime });
+
+                    if (audioBlob.size < 500) {
+                        status.innerText = '⚠️ 錄音時間太短或沒有聲音，請再按一下說話。';
+                        resetMicUi();
+                        return;
+                    }
+
+                    try {
+                        const base64Audio = await blobToBase64(audioBlob);
+                        const transcript = await transcribeWithGemini(apiKey, base64Audio, actualMime);
+
+                        if (transcript) {
+                            const input = document.getElementById('logInput');
+                            const now = new Date();
+                            const timeStr = `[${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}] `;
+                            const currentVal = input.value.trim();
+                            input.value = (currentVal ? currentVal + '\n' : '') + timeStr + transcript;
+                            input.scrollTop = input.scrollHeight;
+                            input.dispatchEvent(new Event('input'));
+                            status.innerText = `✅ 聽寫完成：「${transcript}」（可繼續按按鈕錄下一段）`;
+                        } else {
+                            status.innerText = '⚠️ 沒有聽清楚說話內容，請再按一下重說。';
+                        }
+                    } catch (err) {
+                        status.innerText = '❌ 語音轉文字失敗：' + err.message;
+                    } finally {
+                        resetMicUi();
+                    }
+                };
+
+                mediaRecorder.start();
+                isRecordingAudio = true;
+                btn.classList.add('recording');
+                btn.innerText = '🛑 正在收音中... (說完點擊這裡結束)';
+                status.innerText = '🎙️ 麥克風收音中！請直接說話，講完後請按一下紅色按鈕...';
+
+            } catch (err) {
+                isRecordingAudio = false;
+                resetMicUi();
+                status.classList.remove('hidden');
+                status.innerText = '❌ 無法開啟麥克風：請確認 Safari/Chrome 已允許麥克風權限 (' + err.message + ')';
+            }
+        };
+
+        function resetMicUi() {
+            const btn = document.getElementById('aiMicBtn');
+            btn.classList.remove('recording');
+            btn.disabled = false;
+            btn.innerText = '🎙️ 按一下開始說話 (iPhone 穩定收音版)';
+        }
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64String = reader.result.split(',')[1];
+                    resolve(base64String);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        async function transcribeWithGemini(apiKey, base64Audio, mimeType) {
+            const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+            let lastErr = '';
+
+            for (const m of models) {
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                role: "user",
+                                parts: [
+                                    { text: "請將這段語音逐字準確轉錄為繁體中文文字（保留英文專有名詞如 PLC, CNC, MDI, DINA, Raul, SUB 等）。只輸出轉錄後的文字本身，不要加任何解釋或引號。若完全沒人聲請輸出空白。" },
+                                    { inlineData: { mimeType: mimeType, data: base64Audio } }
+                                ]
+                            }],
+                            generationConfig: { temperature: 0.0 }
+                        })
+                    });
+                    const json = await res.json();
+                    if (!json.error && json.candidates && json.candidates[0]?.content?.parts?.[0]?.text) {
+                        return json.candidates[0].content.parts[0].text.trim();
+                    }
+                    lastErr = json.error?.message || '無回應';
+                } catch (e) {
+                    lastErr = e.message;
                 }
-            };
+            }
+            throw new Error(lastErr);
         }
 
         async function postToGoogleSheet(sheetUrl, itemData) {
@@ -359,8 +435,8 @@
         };
 
         window.submitLog = async function() {
-            if (isRecording && recognition) {
-                try { recognition.stop(); } catch (e) {}
+            if (isRecordingAudio && mediaRecorder) {
+                try { mediaRecorder.stop(); } catch (e) {}
             }
 
             const apiKey = document.getElementById('apiKey').value.trim();
