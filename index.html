@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>閃記日誌 FlashLog v2.6</title>
+    <title>閃記日誌 FlashLog v2.7</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,14 +11,14 @@
         body { padding-top: env(safe-area-inset-top); background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         .page { display: none; }
         .page.active { display: block; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
-        .recording { background-color: #ef4444 !important; color: white !important; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+        .recording { background-color: #ef4444 !important; color: white !important; animation: pulse 1.2s infinite; }
     </style>
 </head>
 <body class="text-slate-700">
 
     <nav class="flex justify-center gap-3 bg-slate-900 p-3.5 text-white sticky top-0 z-50 shadow-md">
-        <button id="nav-write" class="px-5 py-2 rounded-full text-sm font-bold bg-blue-600 transition-colors" onclick="switchPage('write')">📝 快速記日誌 (v2.6)</button>
+        <button id="nav-write" class="px-5 py-2 rounded-full text-sm font-bold bg-blue-600 transition-colors" onclick="switchPage('write')">📝 快速記日誌 (v2.7)</button>
         <button id="nav-history" class="px-5 py-2 rounded-full text-sm font-bold hover:bg-slate-700 transition-colors" onclick="switchPage('history')">📂 歷史紀錄 (<span id="recordCount">0</span>)</button>
     </nav>
 
@@ -42,7 +42,7 @@
                             <label class="block text-xs font-semibold mb-1 text-slate-500">2. Google Sheets Web App 網址 (必須是 /exec 結尾)</label>
                             <div class="flex gap-2">
                                 <input type="text" id="sheetUrl" placeholder="貼上 https://script.google.com/macros/s/.../exec" class="w-full p-2.5 border border-slate-300 rounded-lg bg-slate-50 text-sm">
-                                <button onclick="testSheetConnection()" class="shrink-0 px-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700">🔌 測試寫入</button>
+                                <button type="button" onclick="testSheetConnection()" class="shrink-0 px-3 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700">🔌 測試寫入</button>
                             </div>
                         </div>
                     </div>
@@ -52,7 +52,7 @@
             <!-- 輸入區 -->
             <div class="bg-white p-5 rounded-2xl shadow-sm">
                 <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-lg font-bold text-slate-900">今日現場隨手記 (v2.6 語音強化版)</h2>
+                    <h2 class="text-lg font-bold text-slate-900">今日現場隨手記 (v2.7 語音秒開版)</h2>
                     <span id="saveStatus" class="text-xs px-2.5 py-1 bg-slate-100 text-slate-500 rounded-lg font-medium">自動儲存草稿</span>
                 </div>
 
@@ -60,12 +60,12 @@
                 <div class="mb-3">
                     <div class="text-xs text-slate-400 mb-1.5">⚡ 點擊快速插入常用詞：</div>
                     <div class="flex flex-wrap gap-1.5">
-                        <button onclick="insertTag('主軸換檔異常 ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">⚙️ 主軸換檔</button>
-                        <button onclick="insertTag('驅動器異常 ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">🚨 驅動器異常</button>
-                        <button onclick="insertTag('PLC修改與測試 ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">🔌 PLC修改</button>
-                        <button onclick="insertTag('機台驗機、Final Check ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">✅ Final Check</button>
-                        <button onclick="insertTag('教育訓練() ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">🎓 教育訓練</button>
-                        <button onclick="insertTag('與H.Q/Raul討論後 ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">🌍 H.Q/Raul</button>
+                        <button type="button" onclick="insertTag('主軸換檔異常 ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">⚙️ 主軸換檔</button>
+                        <button type="button" onclick="insertTag('驅動器異常 ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">🚨 驅動器異常</button>
+                        <button type="button" onclick="insertTag('PLC修改與測試 ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">🔌 PLC修改</button>
+                        <button type="button" onclick="insertTag('機台驗機、Final Check ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">✅ Final Check</button>
+                        <button type="button" onclick="insertTag('教育訓練() ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">🎓 教育訓練</button>
+                        <button type="button" onclick="insertTag('與H.Q/Raul討論後 ')" class="text-xs px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 rounded-lg font-medium border border-slate-200">🌍 H.Q/Raul</button>
                     </div>
                 </div>
 
@@ -76,15 +76,16 @@
 
                 <div class="flex justify-between items-center text-xs text-slate-500 mt-2 mb-4">
                     <span id="charCount">字數: 0</span>
-                    <button onclick="clearDraft()" class="text-red-500 hover:text-red-700 font-medium px-2 py-1">🗑️ 清空草稿</button>
+                    <button type="button" onclick="clearDraft()" class="text-red-500 hover:text-red-700 font-medium px-2 py-1">🗑️ 清空草稿</button>
                 </div>
 
                 <div class="grid grid-cols-1 gap-3">
-                    <button id="micBtn" class="w-full p-4 rounded-xl font-bold bg-slate-800 text-white hover:bg-slate-700 flex justify-center items-center gap-2 shadow-sm">
+                    <!-- 直接綁定 onclick="toggleMic()" 確保點擊 100% 有反應且立刻變色 -->
+                    <button type="button" id="micBtn" onclick="toggleMic()" class="w-full p-4 rounded-xl font-bold bg-slate-800 text-white active:scale-95 flex justify-center items-center gap-2 shadow-sm transition-all cursor-pointer select-none">
                         🎤 按一下開始語音輸入 (邊講邊出字)
                     </button>
 
-                    <button id="submitBtn" class="w-full p-4 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 flex justify-center items-center gap-2 shadow-sm">
+                    <button type="button" id="submitBtn" onclick="submitLog()" class="w-full p-4 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 active:scale-95 flex justify-center items-center gap-2 shadow-sm transition-all cursor-pointer">
                         ✨ 整理成 NOTICE 表格格式並寫入 Google 試算表
                     </button>
                 </div>
@@ -98,10 +99,10 @@
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
                         <span id="syncStatusText" class="text-xs font-bold text-emerald-600">✅ 整理完成</span>
                         <div class="flex gap-2">
-                            <button onclick="copyLastResultTSV()" class="text-xs px-3 py-1.5 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700">
+                            <button type="button" onclick="copyLastResultTSV()" class="text-xs px-3 py-1.5 bg-slate-800 text-white rounded-lg font-bold hover:bg-slate-700">
                                 📋 複製 A~G 欄 (貼上試算表)
                             </button>
-                            <button onclick="copyEnglishNotice()" class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700">
+                            <button type="button" onclick="copyEnglishNotice()" class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700">
                                 🔤 複製 ENGLISH NOTICE
                             </button>
                         </div>
@@ -123,6 +124,9 @@
 
     <script>
         let lastGeneratedItem = null;
+        let recognition = null;
+        let isListening = false;
+        let baseText = '';
 
         function toText(val) {
             if (Array.isArray(val)) return val.map(v => String(v ?? '')).join('\n');
@@ -171,3 +175,459 @@
             } else if (hasKey && sheetUrl) {
                 badge.innerText = '⚠️ 試算表網址格式不正確';
                 badge.className = 'text-xs px-2 py-0.5 rounded bg-red-100 text-red-600 font-bold';
+                document.getElementById('settingsDetails').open = true;
+            } else if (hasKey) {
+                badge.innerText = '已設 API (未填試算表網址)';
+                badge.className = 'text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700 font-bold';
+            } else {
+                badge.innerText = '請先設定 API Key 與試算表網址';
+                badge.className = 'text-xs px-2 py-0.5 rounded bg-red-100 text-red-600 font-bold';
+                document.getElementById('settingsDetails').open = true;
+            }
+        }
+
+        document.getElementById('apiKey').addEventListener('input', (e) => {
+            localStorage.setItem('flashlog_api_key', e.target.value);
+            updateConfigBadge();
+        });
+        document.getElementById('sheetUrl').addEventListener('input', (e) => {
+            localStorage.setItem('flashlog_sheet_url', e.target.value);
+            updateConfigBadge();
+        });
+
+        let saveTimeout;
+        document.getElementById('logInput').addEventListener('input', (e) => {
+            updateCharCount();
+            const status = document.getElementById('saveStatus');
+            status.innerText = '儲存中...';
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                localStorage.setItem('flashlog_draft', e.target.value);
+                status.innerText = '已自動儲存草稿';
+            }, 300);
+        });
+
+        window.insertTag = function(tagText) {
+            const input = document.getElementById('logInput');
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            const text = input.value;
+            input.value = text.substring(0, start) + tagText + text.substring(end);
+            input.focus();
+            input.selectionStart = input.selectionEnd = start + tagText.length;
+            input.dispatchEvent(new Event('input'));
+        };
+
+        // ✅ v2.7 強制喚醒語音函式：一按立刻變色，每次點擊建立全新連線，絕不卡死
+        window.toggleMic = function() {
+            const micBtn = document.getElementById('micBtn');
+            const speechStatus = document.getElementById('speechStatus');
+            const input = document.getElementById('logInput');
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+            // 如果瀏覽器不支援 Web Speech API，直接幫使用者聚焦輸入框喚醒手機鍵盤麥克風
+            if (!SpeechRecognition) {
+                speechStatus.classList.remove('hidden');
+                speechStatus.innerText = '💡 此瀏覽器不支援網頁直接收音，已為您開啟輸入框，請直接按手機鍵盤上的「🎤」說話！';
+                input.focus();
+                return;
+            }
+
+            // 如果正在收音中 -> 立即停止並恢復按鈕顏色
+            if (isListening) {
+                isListening = false;
+                try { if (recognition) recognition.stop(); } catch (e) {}
+                micBtn.classList.remove('recording');
+                micBtn.innerText = '🎤 按一下開始語音輸入 (邊講邊出字)';
+                speechStatus.innerText = '✅ 已結束收音！';
+                setTimeout(() => speechStatus.classList.add('hidden'), 2000);
+                return;
+            }
+
+            // 1. 點擊瞬間「立刻變紅色」，讓使用者馬上看到視覺回饋！
+            isListening = true;
+            micBtn.classList.add('recording');
+            micBtn.innerText = '🛑 正在收音中... (講完點擊結束)';
+            speechStatus.classList.remove('hidden');
+            speechStatus.innerText = '🎙️ 麥克風已啟動，請開始說話...';
+
+            const now = new Date();
+            const timePrefix = `[${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}] `;
+            baseText = (input.value ? input.value + '\n' : '') + timePrefix;
+
+            // 2. 每次點擊都建立全新的 SpeechRecognition 實例，避免舊實例卡死沒反應
+            try {
+                if (recognition) {
+                    try { recognition.abort(); } catch (e) {}
+                }
+                recognition = new SpeechRecognition();
+                recognition.lang = 'zh-TW';
+                recognition.continuous = false;     // 手機端設為 false 最穩定，講完一句我們在 onend 自動無縫重啟！
+                recognition.interimResults = true;  // 邊講邊出字
+
+                recognition.onresult = (e) => {
+                    let currentTranscript = '';
+                    let isFinalResult = false;
+
+                    for (let i = e.resultIndex; i < e.results.length; i++) {
+                        currentTranscript += e.results[i][0].transcript;
+                        if (e.results[i].isFinal) isFinalResult = true;
+                    }
+
+                    input.value = baseText + currentTranscript;
+                    input.scrollTop = input.scrollHeight;
+                    input.dispatchEvent(new Event('input'));
+
+                    if (isFinalResult) {
+                        baseText = input.value + ' ';
+                        speechStatus.innerText = `✅ 已寫入：「${currentTranscript}」，請繼續說或點紅色按鈕結束...`;
+                    } else {
+                        speechStatus.innerText = `👂 聽取中：${currentTranscript}`;
+                    }
+                };
+
+                recognition.onerror = (e) => {
+                    if (e.error === 'no-speech') {
+                        speechStatus.innerText = '⚠️ 沒聽到聲音，請靠近麥克風繼續說...';
+                    } else if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+                        isListening = false;
+                        micBtn.classList.remove('recording');
+                        micBtn.innerText = '🎤 按一下開始語音輸入 (邊講邊出字)';
+                        speechStatus.innerText = '❌ 麥克風權限被拒！請點網址列左方鎖頭允許麥克風，或直接點輸入框用手機鍵盤「🎤」說話。';
+                        input.focus();
+                    } else {
+                        speechStatus.innerText = `⚠️ 語音狀態 (${e.error})，若無法收音請點輸入框用鍵盤「🎤」說話。`;
+                    }
+                };
+
+                recognition.onend = () => {
+                    // 如果使用者還沒按停止，自動無縫接續聽下一句！
+                    if (isListening) {
+                        try {
+                            recognition.start();
+                        } catch (err) {
+                            isListening = false;
+                            micBtn.classList.remove('recording');
+                            micBtn.innerText = '🎤 按一下開始語音輸入 (邊講邊出字)';
+                        }
+                    } else {
+                        micBtn.classList.remove('recording');
+                        micBtn.innerText = '🎤 按一下開始語音輸入 (邊講邊出字)';
+                    }
+                };
+
+                recognition.start();
+            } catch (err) {
+                isListening = false;
+                micBtn.classList.remove('recording');
+                micBtn.innerText = '🎤 按一下開始語音輸入 (邊講邊出字)';
+                speechStatus.innerText = '❌ 啟動失敗：' + err.message + '（請直接點輸入框用手機鍵盤🎤）';
+                input.focus();
+            }
+        };
+
+        async function postToGoogleSheet(sheetUrl, itemData) {
+            if (!sheetUrl.includes('script.google.com')) {
+                throw new Error('網址錯誤！請貼上 Google Apps Script 部署後的網頁應用程式網址 (https://script.google.com/.../exec)。');
+            }
+
+            const payloadForGAS = {
+                date: toText(itemData.date),
+                company: toText(itemData.company),
+                issues: toText(itemData.issues),
+                problemDesc: toText(itemData.problemDesc),
+                result: toText(itemData.result),
+                englishNotice: toText(itemData.englishNotice),
+                notes: toText(itemData.notes),
+                raw: toText(itemData.notes)
+            };
+
+            const res = await fetch(sheetUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payloadForGAS),
+                redirect: 'follow'
+            });
+
+            const text = await res.text();
+            let json;
+            try {
+                json = JSON.parse(text);
+            } catch (err) {
+                throw new Error('Google Apps Script 未回傳正確格式。請確認您在 Apps Script 修改後有點擊「管理部署作業 > 編輯 ✏️ > 版本：新版本 > 部署」，且權限設為「所有人」！');
+            }
+
+            if (json.result === 'error' || json.status === 'error') {
+                throw new Error('Apps Script 內部錯誤：' + (json.message || '未知錯誤'));
+            }
+            return json;
+        }
+
+        window.testSheetConnection = async function() {
+            const sheetUrl = document.getElementById('sheetUrl').value.trim();
+            if (!sheetUrl) return alert('請先在欄位中貼上 Google Sheets Web App 網址！');
+            try {
+                const now = new Date();
+                const testDate = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+                await postToGoogleSheet(sheetUrl, {
+                    date: testDate,
+                    company: '連線測試',
+                    issues: '系統連線測試OK',
+                    problemDesc: '1. 測試從閃記日誌寫入 Google 試算表',
+                    result: '1. 連線成功',
+                    englishNotice: 'Connection Test - 1. Successfully connected to Google Sheets.',
+                    notes: '此列可直接刪除'
+                });
+                alert('🎉 測試成功！已經在您的 Google 試算表最下方寫入一筆「連線測試」資料！');
+            } catch (err) {
+                alert('❌ 寫入失敗：\n' + err.message);
+            }
+        };
+
+        window.submitLog = async function() {
+            // 若還在錄音中，先自動停止錄音
+            if (isListening) window.toggleMic();
+
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const sheetUrl = document.getElementById('sheetUrl').value.trim();
+            const textData = document.getElementById('logInput').value.trim();
+
+            if (!apiKey) return alert('請先輸入 Gemini API Key！');
+            if (!textData) return alert('請輸入工作紀錄！');
+
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('resultBox').classList.add('hidden');
+            document.getElementById('submitBtn').disabled = true;
+
+            const systemPrompt = `你是一個專門整理 CNC 工具機售服紀錄的分欄助手。
+【最高原則：絕對禁止腦補、禁止擴寫、禁止官腔廢話！】
+你只能根據使用者提供的文字進行「欄位分類、錯字修正、標上 1. 2. 3. 條列編號」，使用者沒提到的檢查動作或原因，一個字都不准自己加！保留原本的中英夾雜術語（如 PLC, SUB, MDI, DRVIE, Watch Dog PE, LOOPTIME, CPUTIME, Final Check, DINA, H.Q, Raul, 鋒哥 等）。
+
+請將以下【今日筆記】轉換為 JSON 格式輸出（所有欄位的值都必須是純字串 String，絕對不可使用陣列 Array）：
+{
+  "company": "客戶簡稱 (如：福裕、台秀、銳德、奕達、嵩富、永峻昌)",
+  "issues": "問題與異常 (極簡標題，4~10字)",
+  "problemDesc": "問題描述 (售服問題：多項請用 1. 2. 換行條列，忠於原意不灌水)",
+  "result": "處理結果 (售服處理：實際查修動作、重新安裝、修改了什麼PLC/參數/版本，對應問題編號條列)",
+  "notes": "備註 (若無特別備註請留空字串)",
+  "englishNotice": "將 issues 與 problemDesc (以及簡要處理結果) 準確翻譯為英文，格式為：[English Issues] - [English Details]"
+}`;
+
+            try {
+                const models = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
+                let data = null;
+                let lastError = '';
+
+                for (const modelName of models) {
+                    try {
+                        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n【今日筆記】：\n${textData}` }] }],
+                                generationConfig: { temperature: 0.0, responseMimeType: "application/json" }
+                            })
+                        });
+                        const resJson = await response.json();
+                        if (!resJson.error) {
+                            data = resJson;
+                            break;
+                        }
+                        lastError = resJson.error.message;
+                    } catch (e) {
+                        lastError = e.message;
+                    }
+                }
+
+                if (!data) throw new Error(lastError || '目前 AI 伺服器忙碌中，請稍後再試');
+
+                const aiResult = JSON.parse(data.candidates[0].content.parts[0].text);
+                const now = new Date();
+                const displayDate = `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+
+                const sheetData = {
+                    date: displayDate,
+                    company: toText(aiResult.company),
+                    issues: toText(aiResult.issues),
+                    problemDesc: toText(aiResult.problemDesc),
+                    result: toText(aiResult.result),
+                    englishNotice: toText(aiResult.englishNotice),
+                    notes: toText(aiResult.notes),
+                    raw: textData
+                };
+
+                lastGeneratedItem = sheetData;
+
+                const reportHtml = renderReportHtml(sheetData);
+                document.getElementById('result').innerHTML = reportHtml;
+                document.getElementById('resultBox').classList.remove('hidden');
+
+                const syncStatus = document.getElementById('syncStatusText');
+                if (sheetUrl) {
+                    try {
+                        await postToGoogleSheet(sheetUrl, sheetData);
+                        syncStatus.innerText = '✅ 整理完成並已確認寫入 Google 試算表！';
+                        syncStatus.className = 'text-xs font-bold text-emerald-600';
+                        setTimeout(() => {
+                            if (confirm('✅ 已成功寫入 Google 試算表！是否清空草稿？')) clearDraft();
+                        }, 300);
+                    } catch(e) {
+                        syncStatus.innerText = '❌ 試算表寫入失敗：' + e.message;
+                        syncStatus.className = 'text-xs font-bold text-red-600';
+                        alert('❌ 試算表寫入失敗：\n' + e.message);
+                    }
+                }
+
+                try {
+                    saveToLocal(sheetData, reportHtml);
+                } catch (localErr) {
+                    console.warn('本地儲存警告:', localErr);
+                }
+
+            } catch (err) {
+                alert('AI 整理錯誤: ' + err.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('submitBtn').disabled = false;
+            }
+        };
+
+        function renderReportHtml(d) {
+            return `<div><strong class="text-slate-900">A. 日期時間：</strong>${toText(d.date)}</div>` +
+                   `<div><strong class="text-slate-900">B. 公司/服務單位：</strong>${toText(d.company)}</div>` +
+                   `<div><strong class="text-slate-900">C. 問題與異常：</strong>${toText(d.issues)}</div>` +
+                   `<div><strong class="text-slate-900">D. 問題描述 (售服問題)：</strong>\n${toText(d.problemDesc)}</div>` +
+                   `<div><strong class="text-slate-900">E. 處理結果 (售服處理)：</strong>\n${toText(d.result)}</div>` +
+                   `<div class="pt-2 border-t border-slate-200 text-slate-600"><strong class="text-blue-700">F. ENGLISH NOTICE：</strong>\n${toText(d.englishNotice)}</div>` +
+                   `<div><strong class="text-slate-900">G. 備註：</strong>${toText(d.notes) || '(空白)'}</div>`;
+        }
+
+        window.copyLastResultTSV = function() {
+            if (!lastGeneratedItem) return;
+            const d = lastGeneratedItem;
+            const quoteCell = (str) => `"${toText(str).replace(/"/g, '""')}"`;
+            const tsv = [toText(d.date), toText(d.company), toText(d.issues), quoteCell(d.problemDesc), quoteCell(d.result), quoteCell(d.englishNotice), quoteCell(d.notes)].join('\t');
+            navigator.clipboard.writeText(tsv).then(() => {
+                alert('📋 已複製 A~G 欄（F 欄為英文通知）！');
+            });
+        };
+
+        window.copyEnglishNotice = function() {
+            if (!lastGeneratedItem) return;
+            navigator.clipboard.writeText(toText(lastGeneratedItem.englishNotice)).then(() => {
+                alert('🔤 已複製 ENGLISH NOTICE！');
+            });
+        };
+
+        function saveToLocal(sheetData, reportHtml) {
+            let history = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
+            history.unshift({ id: Date.now().toString(), ...sheetData, report: reportHtml });
+            localStorage.setItem('flashlog_history', JSON.stringify(history));
+            loadHistory();
+        }
+
+        window.switchPage = function(pageName) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(`page-${pageName}`).classList.add('active');
+            document.getElementById('nav-write').className = `px-5 py-2 rounded-full text-sm font-bold transition-colors ${pageName==='write'?'bg-blue-600':'hover:bg-slate-700'}`;
+            document.getElementById('nav-history').className = `px-5 py-2 rounded-full text-sm font-bold transition-colors ${pageName==='history'?'bg-blue-600':'hover:bg-slate-700'}`;
+            if(pageName === 'history') loadHistory();
+        };
+
+        function loadHistory() {
+            const container = document.getElementById('historyContainer');
+            let records = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
+            document.getElementById('recordCount').innerText = records.length;
+            if (records.length === 0) return container.innerHTML = '<div class="text-center text-slate-400 py-8">尚無歷史紀錄</div>';
+
+            container.innerHTML = records.map(item => {
+                const comp = toText(item.company).replace(/"/g, '&quot;');
+                const iss = toText(item.issues).replace(/"/g, '&quot;');
+                const prob = toText(item.problemDesc);
+                const res = toText(item.result);
+                const eng = toText(item.englishNotice);
+                const nts = toText(item.notes).replace(/"/g, '&quot;');
+
+                return `
+                <div class="border-b border-slate-200 pb-5 last:border-0" id="item-${item.id}">
+                    <div id="view-${item.id}">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="font-bold text-slate-800 text-sm">📅 ${toText(item.date)} — <span class="text-blue-600">${comp}</span></div>
+                            <div class="flex gap-1.5">
+                                <button type="button" onclick="enterEditMode('${item.id}')" class="text-xs px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg font-bold">✏️ 修正</button>
+                                <button type="button" onclick="deleteRecord('${item.id}')" class="text-xs px-2.5 py-1 bg-red-100 text-red-600 rounded-lg font-bold">🗑️</button>
+                            </div>
+                        </div>
+                        <div class="text-sm text-slate-600 bg-slate-50 p-3.5 rounded-xl space-y-2 whitespace-pre-wrap leading-relaxed">${renderReportHtml(item)}</div>
+                    </div>
+
+                    <div id="edit-${item.id}" class="hidden bg-amber-50/60 p-4 rounded-xl border border-amber-200 space-y-3 mt-2">
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">B. 公司/服務單位</label><input type="text" id="edit-comp-${item.id}" value="${comp}" class="w-full p-2 text-sm border rounded-lg"></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">C. 問題與異常</label><input type="text" id="edit-iss-${item.id}" value="${iss}" class="w-full p-2 text-sm border rounded-lg"></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">D. 問題描述 (售服問題)</label><textarea id="edit-prob-${item.id}" class="w-full p-2 text-sm border rounded-lg h-24">${prob}</textarea></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">E. 處理結果 (售服處理)</label><textarea id="edit-res-${item.id}" class="w-full p-2 text-sm border rounded-lg h-24">${res}</textarea></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">F. ENGLISH NOTICE</label><textarea id="edit-eng-${item.id}" class="w-full p-2 text-sm border rounded-lg h-20">${eng}</textarea></div>
+                        <div><label class="block text-xs font-semibold text-slate-500 mb-1">G. 備註</label><input type="text" id="edit-nts-${item.id}" value="${nts}" class="w-full p-2 text-sm border rounded-lg"></div>
+                        <div class="flex gap-2 justify-end pt-2">
+                            <button type="button" onclick="exitEditMode('${item.id}')" class="text-xs px-3 py-2 bg-slate-200 text-slate-600 rounded-lg font-bold">取消</button>
+                            <button type="button" onclick="saveAndSyncUpdate('${item.id}')" class="text-xs px-3 py-2 bg-emerald-600 text-white rounded-lg font-bold">💾 儲存並同步雲端</button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        window.enterEditMode = (id) => { document.getElementById(`view-${id}`).classList.add('hidden'); document.getElementById(`edit-${id}`).classList.remove('hidden'); };
+        window.exitEditMode = (id) => { document.getElementById(`view-${id}`).classList.remove('hidden'); document.getElementById(`edit-${id}`).classList.add('hidden'); };
+
+        window.saveAndSyncUpdate = async function(id) {
+            let history = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
+            let currentItem = history.find(item => item.id === id);
+            if (!currentItem) return;
+
+            const sheetUrl = document.getElementById('sheetUrl').value.trim();
+            const updated = {
+                ...currentItem,
+                company: document.getElementById(`edit-comp-${id}`).value.trim(),
+                issues: document.getElementById(`edit-iss-${id}`).value.trim(),
+                problemDesc: document.getElementById(`edit-prob-${id}`).value.trim(),
+                result: document.getElementById(`edit-res-${id}`).value.trim(),
+                englishNotice: document.getElementById(`edit-eng-${id}`).value.trim(),
+                notes: document.getElementById(`edit-nts-${id}`).value.trim()
+            };
+
+            history = history.map(item => item.id === id ? { ...updated, report: renderReportHtml(updated) } : item);
+            localStorage.setItem('flashlog_history', JSON.stringify(history));
+
+            if (sheetUrl) {
+                try {
+                    await postToGoogleSheet(sheetUrl, updated);
+                    alert('✅ 手機與 Google 試算表皆已同步更新！');
+                } catch(e) {
+                    alert('❌ 手機已更新，但連線 Google 試算表失敗：\n' + e.message);
+                }
+            } else {
+                alert('✅ 手機紀錄已更新！');
+            }
+            loadHistory();
+        };
+
+        window.deleteRecord = function(id) {
+            if(!confirm('確定刪除此筆手機紀錄？')) return;
+            let history = JSON.parse(localStorage.getItem('flashlog_history') || '[]');
+            localStorage.setItem('flashlog_history', JSON.stringify(history.filter(item => item.id !== id)));
+            loadHistory();
+        };
+
+        window.clearDraft = function() {
+            document.getElementById('logInput').value = '';
+            localStorage.setItem('flashlog_draft', '');
+            updateCharCount();
+            document.getElementById('resultBox').classList.add('hidden');
+        };
+        window.updateCharCount = function() {
+            document.getElementById('charCount').innerText = `字數: ${document.getElementById('logInput').value.length}`;
+        };
+    </script>
+</body>
+</html>
